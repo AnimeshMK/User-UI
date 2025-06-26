@@ -1,8 +1,7 @@
 // src/firebaseConfig.js
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-// If you plan to use Firestore for data, uncomment the next line:
-// import { getFirestore } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore'; // Import getFirestore
 
 const firebaseConfig = {
   apiKey: "AIzaSyD_n6KUrza1DcU4EdGZXaULe9dPEWU2X_E",
@@ -17,9 +16,6 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-// If using Firestore:
-// const db = getFirestore(app);
+const db = getFirestore(app); // Initialize Firestore
 
-export { auth };
-// If using Firestore:
-// export { auth, db };
+export { auth, db }; // Export both auth and db
