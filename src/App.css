@@ -1,128 +1,154 @@
-/* App.css */
+/* src/App.css - Refined for Dynamic UI (PC to Mobile) */
 
 /* General App Styling */
 body {
-    margin: 0; 
-    padding: 0; 
+    margin: 0;
+    padding: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background: none;
-    animation: none; 
+    animation: none;
     color: #e0e0e0;
     min-height: 100vh;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
+    align-items: flex-start; /* Aligned to flex-start to allow content to scroll naturally */
     box-sizing: border-box;
-    overflow-y: auto;
+    overflow-y: auto; /* Allow vertical scrolling if content overflows */
 }
 
 /* Background Video Setting */
 #myVideo {
-    position: fixed; 
+    position: fixed;
     right: 0;
     bottom: 0;
-    min-width: 100%; 
-    min-height: 100%; 
+    min-width: 100%;
+    min-height: 100%;
     width: auto;
     height: auto;
-    z-index: -100; 
-    background-size: cover; 
-    overflow: hidden; 
+    z-index: -100;
+    background-size: cover;
+    overflow: hidden;
 }
 
-/* Outermost Bubble Setting */
+/* Outermost Bubble Setting - Applied to the .app div in App.jsx */
 .app {
-    position: relative; 
-    width: 1400px;
-    max-width: 1400px;
+    position: relative;
+    /* Use min() for fluid width that caps at 1400px */
+    width: min(95vw, 1400px); /* 95% of viewport width, but no more than 1400px */
     background: rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(25px);
     border-radius: 20px;
-    padding: 30px;
+    padding: 2.5rem; /* Base padding using rem for scalability */
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
     border: 2px solid rgba(255, 255, 255, 0.15);
     display: flex;
     flex-direction: column;
-    gap: 25px;
-    margin-top: 20px;
-    margin-bottom: 20px;
-    min-height: calc(100vh - 40px);
+    gap: 2rem; /* Spacing between main sections/elements */
+    margin: 1.5rem auto; /* Center horizontally, add top/bottom margin */
+    min-height: calc(100vh - 3rem); /* Ensure it takes up most of the viewport height (100vh - top/bottom margin) */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
 }
 
-
+/* App Header (contains title and user info/logout) */
 .app-header {
-    text-align: center;
-    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1.25rem; /* Base padding */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 1.25rem; /* Base margin */
+    flex-wrap: wrap; /* Allow items to wrap onto a new line on smaller screens */
+    gap: 1rem; /* Spacing between wrapped items */
+    text-align: center; /* Default text alignment */
 }
 
 .app-title {
-    font-size: 3em; /* Slightly larger title */
+    font-size: 3em; /* Base font size */
     font-weight: 700;
-    color: #a8dadc; /* Cyan-ish for highlight */
-    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5); /* Stronger text shadow */
+    color: #a8dadc;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+    margin: 0; /* Remove default margin */
+    flex-grow: 1; /* Allow title to take up available space */
+    min-width: 10rem; /* Prevent title from becoming too small */
 }
 
-/* Add/Create Form */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap; /* Allow user info and logout button to wrap */
+    justify-content: flex-end; /* Align to the right if space allows */
+}
+
+.user-info p {
+    margin: 0;
+    font-size: 0.95em;
+    color: #e0e0e0;
+    white-space: nowrap; /* Keep email on one line */
+}
+
+/* Add/Create Form (Search input, toggle archived, archive log buttons) */
 .add-form {
     display: flex;
-    gap: 15px;
+    gap: 1rem; /* Base spacing */
     align-items: center;
-    margin-bottom: 30px;
-    flex-wrap: wrap;
-    padding: 15px;
-    background: rgba(255, 255, 255, 0.05); /* Light glass background for input area */
-    border-radius: 15px;
+    margin-bottom: 1.75rem; /* Base margin */
+    flex-wrap: wrap; /* Allow items to wrap */
+    padding: 1rem; /* Base padding */
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.9375rem; /* 15px */
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .dropdown-container {
     position: relative;
-    z-index: 100; /* Ensure dropdown is always on top */
+    z-index: 100;
 }
 
 .dropdown-trigger {
-    background: rgba(255, 255, 255, 0.15); /* Slightly less transparent */
+    background: rgba(255, 255, 255, 0.15);
     border: 1px solid rgba(255, 255, 255, 0.4);
-    padding: 10px 18px;
-    border-radius: 50px; /* Changed to semi-circle/pill shape */
+    padding: 0.625rem 1.125rem; /* 10px 18px */
+    border-radius: 3.125rem; /* 50px */
     color: white;
     cursor: pointer;
     font-size: 1.05em;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 0.625rem; /* 10px */
     transition: background 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    min-width: fit-content; /* Ensure it doesn't shrink below its content */
 }
 
 .dropdown-trigger:hover {
     background: rgba(255, 255, 255, 0.25);
     border-color: rgba(255, 255, 255, 0.6);
-    transform: translateY(-1px);
+    transform: translateY(-0.125rem); /* -2px */
 }
 
 .dropdown-menu {
     position: absolute;
-    top: 110%; /* Position further below the trigger */
+    top: 110%;
     left: 0;
-    background: rgba(0, 0, 0, 0.8); /* Darker for better contrast */
+    background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(12px);
-    border-radius: 10px;
+    border-radius: 0.625rem; /* 10px */
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
     overflow: hidden;
-    min-width: 140px;
+    min-width: 8.75rem; /* 140px */
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .dropdown-option {
-    padding: 12px 18px;
+    padding: 0.75rem 1.125rem; /* 12px 18px */
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 0.625rem; /* 10px */
     transition: background 0.2s ease;
     color: #e0e0e0;
 }
@@ -132,16 +158,17 @@ body {
 }
 
 .main-input {
-    flex-grow: 1;
-    padding: 12px 18px;
-    border-radius: 10px;
+    flex-grow: 1; /* Allows input to take up available space */
+    padding: 0.75rem 1.125rem; /* 12px 18px */
+    border-radius: 0.625rem; /* 10px */
     border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.1); /* Lighter transparency for input */
+    background: rgba(255, 255, 255, 0.1);
     color: white;
     font-size: 1.05em;
     outline: none;
     transition: border-color 0.2s ease, background 0.2s ease;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+    min-width: 9.375rem; /* 150px - Ensure input is not too narrow on wider screens */
 }
 
 .main-input::placeholder {
@@ -149,99 +176,119 @@ body {
 }
 
 .main-input:focus {
-    border-color: #87ceeb; /* Softer blue on focus */
+    border-color: #87ceeb;
     background: rgba(255, 255, 255, 0.15);
 }
 
 .add-btn {
-    padding: 12px 22px;
-    border-radius: 50px; /* Changed to semi-circle/pill shape */
+    padding: 0.75rem 1.375rem; /* 12px 22px */
+    border-radius: 3.125rem; /* 50px */
     cursor: pointer;
     font-size: 1.05em;
     font-weight: bold;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 0.625rem; /* 10px */
     transition: background 0.2s ease, transform 0.2s ease;
     border: none;
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    white-space: nowrap; /* Prevent button text from wrapping */
+    min-width: fit-content;
 }
 
 .add-btn.primary {
-    background: #61dafb; /* React blue */
+    background: #61dafb;
     color: #282c34;
 }
 
 .add-btn.primary:hover {
     background: #4ab7e1;
-    transform: translateY(-2px);
+    transform: translateY(-0.125rem); /* -2px */
 }
 
-.add-btn.secondary { /* For add task button within a list and archive button */
+.add-btn.secondary {
     background: rgba(255, 255, 255, 0.15);
     color: white;
-    padding: 10px 16px;
-    border-radius: 50px; /* Changed to semi-circle/pill shape */
-    box-shadow: none; /* No extra shadow for nested buttons */
+    padding: 0.625rem 1rem; /* 10px 16px */
+    border-radius: 3.125rem; /* 50px */
+    box-shadow: none;
 }
 
 .add-btn.secondary:hover {
     background: rgba(255, 255, 255, 0.25);
 }
 
-/* Content Area - Flex Container for Two Columns */
+/* Checklist Content Area - Wrapper for sections within Checklist.jsx */
+.checklist-content {
+    display: flex;
+    flex-direction: column; /* Default to column, overridden for larger screens below */
+    gap: 1.5rem; /* Spacing between sections */
+    flex-grow: 1; /* Allow the content to fill available space */
+}
+
 .content-area {
     display: flex;
     justify-content: space-around; /* Distributes space evenly */
-    gap: 25px; /* Space between columns */
+    gap: 1.5rem; /* Space between columns */
     flex-wrap: wrap; /* Allow columns to stack on smaller screens */
-    margin-top: 20px;
+    margin-top: 0; /* Managed by parent gap */
 }
 
 .lists-section,
 .tasks-section {
     flex: 1; /* Allows sections to grow and shrink */
-    min-width: 280px; /* Minimum width before wrapping */
-    background: rgba(255, 255, 255, 0.05); /* Light glass background for sections */
+    min-width: 17.5rem; /* 280px - Minimum width before wrapping on larger screens */
+    background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(12px);
-    border-radius: 18px;
-    padding: 20px;
+    border-radius: 1.125rem; /* 18px */
+    padding: 1.25rem; /* 20px */
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex; /* Make section content a flex container */
+    flex-direction: column; /* Stack children vertically */
 }
 
 .section-title {
     font-size: 1.8em;
-    margin-bottom: 20px;
+    margin-bottom: 1.25rem; /* 20px */
     color: #a8dadc;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 0.75rem; /* 12px */
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding-bottom: 15px;
+    padding-bottom: 0.9375rem; /* 15px */
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* Task Item Styling (Layout fix for Assigned/Deadline) */
+.tasks-container, .lists-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9375rem; /* 15px */
+    flex-grow: 1; /* Allow task/list containers to grow */
+}
+
+/* Task Item Styling */
 .task-item {
     display: flex;
     align-items: flex-start;
-    justify-content: space-between;    
-    background: rgba(0, 0, 0, 0.1); /* Lighter transparency for individual items */
+    justify-content: space-between;
+    background: rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
-    border-radius: 15px;
-    padding: 20px;
-    margin-bottom: 15px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Original shadow */
-    transition: all 0.3s ease; /* Smooth transition for all properties, including box-shadow */
+    border-radius: 0.9375rem; /* 15px */
+    padding: 1.25rem; /* 20px */
+    margin-bottom: 0; /* Managed by parent gap in tasks-container */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
     border: 1px solid rgba(255, 255, 255, 0.18);
     position: relative;
     overflow: hidden;
+    flex-wrap: wrap; /* Allow items within task to wrap */
+    gap: 0.625rem; /* 10px - Space between flex items in task */
 }
 .task-item.completed {
-    opacity: 0.7; /* Slightly fade completed tasks */
+    opacity: 0.7;
     border-color: rgba(255, 255, 255, 0.1);
-    animation: blink-shadow 0.8s ease-out 1 forwards; /* Blink once and disappear */
+    animation: blink-shadow 0.8s ease-out 1 forwards;
 }
 
 .task-details-main {
@@ -249,19 +296,21 @@ body {
     flex-direction: column;
     flex-grow: 1;
     align-items: flex-start;
+    min-width: 0; /* Allows text content to shrink without overflow */
 }
 
 .task-content {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 5px;
+    gap: 0.625rem; /* 10px */
+    margin-bottom: 0.3125rem; /* 5px */
+    flex-wrap: wrap; /* Allow task text to wrap if too long */
 }
 
 .task-text {
-    font-size: 1.1em; /* Kept at 1.1em as the base */
+    font-size: 1.1em;
     color: white;
-    word-break: break-word;
+    word-break: break-word; /* Ensure long words break */
     flex-grow: 1;
 }
 
@@ -271,17 +320,25 @@ body {
     transition: color 0.3s ease, text-decoration 0.3s ease;
 }
 
+.task-time-detail {
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.6);
+    margin-left: 1.875rem; /* 30px - Keep indentation */
+    margin-top: 0.3125rem; /* 5px */
+}
+
 .task-actions {
     display: flex;
-    gap: 10px;
-    margin-left: 15px;
-    flex-shrink: 0;
+    gap: 0.625rem; /* 10px */
+    margin-left: 0.9375rem; /* 15px */
+    flex-shrink: 0; /* Prevent actions from shrinking */
+    align-items: center; /* Vertically center buttons */
 }
 
 /* Checkbox styling */
 .checkbox {
-    width: 15px; /* Slightly larger checkbox */
-    height: 15px;
+    width: 1.25rem; /* 20px - Slightly larger for better touch target */
+    height: 1.25rem; /* 20px */
     border: 2px solid rgba(255, 255, 255, 0.6);
     border-radius: 30%;
     display: flex;
@@ -289,155 +346,119 @@ body {
     align-items: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    background: rgba(255, 255, 255, 0.05); /* Glass effect for checkbox */
+    background: rgba(255, 255, 255, 0.05);
     color: white;
     flex-shrink: 0;
 }
 
 .checkbox.checked {
-    background-color: #a8dadc; /* Match title accent color */
+    background-color: #a8dadc;
     border-color: #a8dadc;
-    color: #282c34; /* Dark text on light background */
+    color: #282c34;
 }
 
 .checkbox:hover {
     border-color: #a8dadc;
 }
 
+/* Action Buttons (Notes, Archive, Toggle) - Unified Styling */
 .note-btn,
-.delete-btn {
-    background: none;
-    border: none;
+.archive-btn,
+.toggle-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem; /* 8px */
+    padding: 0.5rem; /* 8px */
     cursor: pointer;
-    color: rgba(255, 255, 255, 0.7);
-    transition: color 0.2s ease, transform 0.2s ease;
-    padding: 8px; /* More padding for easier clicking */
-    border-radius: 8px; /* Rounded buttons */
-    background: rgba(255, 255, 255, 0.05); /* Subtle button background */
+    color: #a8dadc;
+    transition: all 0.2s ease;
+    display: flex; /* For icons */
+    align-items: center;
+    justify-content: center;
 }
 
-.note-btn:hover {
-    color: #a8dadc; /* Accent color on hover */
+.note-btn:hover,
+.archive-btn:hover,
+.toggle-btn:hover {
+    color: #61dafb; /* Brighter accent on hover */
     transform: scale(1.1);
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.15);
 }
 
-.delete-btn:hover {
-    color: #ff6b6b;
-    transform: scale(1.1);
-    background: rgba(255, 255, 255, 0.1);
-}
 
 /* TodoList Styling */
 .todo-list-item {
-    background: rgba(0, 0, 0, 0.1); /* Slightly different transparency for lists */
+    background: rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
-    border-radius: 15px;
-    padding: 20px;
-    margin-bottom: 15px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Original shadow */
-    transition: all 0.3s ease; /* Smooth transition for all properties, including box-shadow */
+    border-radius: 0.9375rem; /* 15px */
+    padding: 1.25rem; /* 20px */
+    margin-bottom: 0; /* Managed by parent gap */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
     border: 1px solid rgba(255, 255, 255, 0.15);
     overflow: hidden;
     position: relative;
+    display: flex; /* Make list content a flex container */
+    flex-direction: column; /* Stack header and tasks */
 }
 .todo-list-item.completed {
-  opacity: 0.7; /* Existing opacity */
-  animation: blink-shadow 0.8s ease-out 1 forwards; /* Blink once and disappear */
-  position: relative;
+    opacity: 0.7;
+    animation: blink-shadow 0.8s ease-out 1 forwards;
+    position: relative;
 }
 
 .list-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
+    margin-bottom: 0.9375rem; /* 15px */
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding-bottom: 10px;
+    padding-bottom: 0.625rem; /* 10px */
+    flex-wrap: wrap; /* Allow header content to wrap */
+    gap: 0.625rem; /* 10px - Spacing between header elements */
 }
 
 .list-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 0.75rem; /* 12px */
     flex-grow: 1;
 }
 
 .list-name {
-    font-size: 1.1em; /* Changed from 1.3em to 1.1em to match task-text */
-    font-weight: normal; /* Changed from 400 to normal for consistency */
+    font-size: 1.3em; /* Slightly larger for list names */
+    font-weight: normal;
     color: white;
     margin: 0;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+    word-break: break-word; /* Allow long names to wrap */
+}
+
+.list-name.strikethrough {
+    text-decoration: line-through;
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .task-count {
     font-size: 0.95em;
     color: rgba(255, 255, 255, 0.7);
     background: rgba(255, 255, 255, 0.1);
-    padding: 4px 8px;
-    border-radius: 8px;
+    padding: 0.25rem 0.5rem; /* 4px 8px */
+    border-radius: 0.5rem; /* 8px */
+    white-space: nowrap; /* Prevent count from wrapping */
 }
 
 .list-actions {
     display: flex;
-    gap: 12px;
-}
-
-.toggle-btn {
-    background: rgba(255, 255, 255, 0.05); /* Subtle background for list actions */
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 8px;
-    cursor: pointer;
-    color: rgba(255, 255, 255, 0.7);
-    transition: all 0.2s ease;
-}
-
-.toggle-btn:hover {
-    color: #a8dadc;
-    transform: scale(1.05);
-    background: rgba(255, 255, 255, 0.15);
+    gap: 0.75rem; /* 12px */
+    flex-shrink: 0;
 }
 
 .list-tasks {
-    margin-top: 15px;
-    padding-top: 15px;
+    margin-top: 0.9375rem; /* 15px */
+    padding-top: 0.9375rem; /* 15px */
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.list-tasks .add-task-form {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-}
-
-.list-tasks .task-input {
-    flex-grow: 1;
-    padding: 10px 15px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.05);
-    color: white;
-    font-size: 1em;
-    outline: none;
-}
-
-.list-tasks .task-input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.list-tasks .task-input.deadline-input {
-    flex-basis: 150px; /* Give a fixed width for deadline input */
-}
-
-/* Separator between sections (might be removed or re-purposed for flex layout) */
-.separator {
-    height: 1px;
-    background: rgba(255, 255, 255, 0.1);
-    margin: 30px 0;
+    flex-grow: 1; /* Allow tasks container to grow */
 }
 
 /* Empty State Styling */
@@ -445,62 +466,64 @@ body {
     text-align: center;
     font-size: 1.1em;
     color: rgba(255, 255, 255, 0.7);
-    padding: 40px 20px;
-    background: rgba(0, 0, 0, 0.15); /* More glass for empty state */
+    padding: 2.5rem 1.25rem; /* 40px 20px */
+    background: rgba(0, 0, 0, 0.15);
     backdrop-filter: blur(10px);
-    border-radius: 15px;
-    margin-top: 20px;
+    border-radius: 0.9375rem; /* 15px */
+    margin-top: 1.25rem; /* 20px */
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-/* Notes Modal Styling (Reverted to original Notes.css values) */
+/* Notes Modal Styling */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
+    width: 100%;
+    height: 100%;
     z-index: 999;
     display: flex;
     justify-content: center;
     align-items: center;
-    background: rgba(0, 0, 0, 0.4); /* Slightly lighter overlay than previous App.css version */
-    backdrop-filter: blur(8px); /* Keep some blur for consistency */
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    padding: 0.9375rem; /* 15px - Added padding for mobile */
+    box-sizing: border-box; /* Include padding in width */
 }
 
 .modal-content {
-    background: rgba(0, 0, 0, 0.1); /* Original Notes.css background */
-    backdrop-filter: blur(20px); /* Original Notes.css blur */
-    border-radius: 16px;
-    padding: 10px; /* Original Notes.css padding */
-    width: 90%;
-    max-width: 400px; /* Original Notes.css max-width */
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(20px);
+    border-radius: 1rem; /* 16px */
+    padding: 1.25rem; /* 20px */
+    width: 95%; /* Fluid width */
+    max-width: 28.125rem; /* 450px - Max width */
     color: #ffffff;
     font-family: 'Segoe UI', sans-serif;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25); /* Original Notes.css shadow */
-    border: 1px solid rgba(255, 255, 255, 0.18); /* Original Notes.css border */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     display: flex;
     flex-direction: column;
-    gap: 10px; /* Adjusted gap for internal elements */
+    gap: 0.9375rem; /* 15px */
+    box-sizing: border-box;
 }
 
 .modal-content textarea {
-    min-height: 120px; /* Original Notes.css min-height */
-    background: rgba(0, 0, 0, 0.05); /* Original Notes.css background */
+    min-height: 9.375rem; /* 150px - Increased min-height */
+    background: rgba(0, 0, 0, 0.05);
     color: white;
-    padding: 2px; /* Original Notes.css padding */
-    border-radius: 10px;
-    margin-bottom: 10px; /* Adjusted margin-bottom */
+    padding: 0.625rem; /* 10px */
+    border-radius: 0.625rem; /* 10px */
+    margin-bottom: 0; /* Removed margin, handled by gap */
     resize: vertical;
-    font-size: 14px; /* Original Notes.css font-size */
+    font-size: 1em; /* Scalable font size */
     outline: none;
     border: 1px solid rgba(255, 255, 255, 0.3);
     transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .modal-content textarea::placeholder {
-    padding: 8px; /* Original Notes.css padding for placeholder */
     color: rgba(255, 255, 255, 0.6);
 }
 
@@ -512,39 +535,42 @@ body {
 .modal-buttons {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 0.625rem; /* 10px */
+    flex-wrap: wrap; /* Allow buttons to wrap */
 }
 
 .modal-buttons button {
-    background: rgba(255, 255, 255, 0.15); /* Glass buttons */
-    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 0.625rem 1.25rem; /* 10px 20px */
     color: white;
-    border-radius: 10px; /* Kept existing border-radius for modal buttons */
+    border-radius: 0.625rem; /* 10px */
     cursor: pointer;
     font-weight: 500;
     transition: all 0.2s ease;
     border: none;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    flex-grow: 1; /* Allow buttons to grow on smaller screens */
+    min-width: 6.25rem; /* 100px - Prevent buttons from becoming too small */
 }
 
 .modal-buttons button:hover {
     background: rgba(255, 255, 255, 0.25);
-    transform: translateY(-1px);
+    transform: translateY(-0.0625rem); /* -1px */
 }
 
-/* ProgressBar Styling (Combined from ProgressBar.css) */
+/* ProgressBar Styling */
 .container{
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: 15px; /* Add some space above progress bar */
+    margin-top: 0.9375rem; /* 15px */
 }
 
 .progress-container{
-    height: 6px; /* Thicker progress bar */
+    height: 0.5rem; /* 8px - Slightly thicker progress bar */
     width: 100%;
-    background-color: rgba(255, 255, 255, 0.1); /* Lighter background for empty part */
-    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 0.625rem; /* 10px */
     overflow: hidden;
     box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -552,11 +578,11 @@ body {
 
 .filler{
     height: 100%;
-    background: linear-gradient(to right, #ffa500, #ff6b6b); /* Gradient for filler */
+    background: linear-gradient(to right, #ffa500, #ff6b6b);
     text-align: center;
-    line-height: 6px; /* Match height */
+    line-height: 0.5rem; /* 8px - Match height */
     transition: width 0.5s ease-in-out;
-    border-radius: 10px; /* Keep rounded corners on filler */
+    border-radius: 0.625rem; /* 10px */
 }
 
 .label{
@@ -568,19 +594,19 @@ body {
 
 /* Specific text color for deadline, if used */
 .deadline-text {
-    color: #ff6b6b; /* Soft red for deadlines */
+    color: #ff6b6b;
     font-weight: 500;
 }
 
-/* New styles for Archive Modal */
+/* Archive Modal Specific Styles */
 .archive-modal-content {
-    max-width: 600px; /* Wider for archive content */
-    max-height: 80vh; /* Limit height and make it scrollable */
+    max-width: 43.75rem; /* 700px - Wider for archive content */
+    max-height: 85vh; /* Limit height and make it scrollable */
     overflow-y: auto;
-    padding: 20px 25px; /* Adjust padding */
+    padding: 1.875rem; /* 30px */
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 1.25rem; /* 20px */
 }
 
 .modal-header {
@@ -588,8 +614,8 @@ body {
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding-bottom: 10px;
-    margin-bottom: 10px;
+    padding-bottom: 0.9375rem; /* 15px */
+    margin-bottom: 0.625rem; /* 10px */
 }
 
 .modal-header h2 {
@@ -604,45 +630,53 @@ body {
     color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
     transition: color 0.2s ease, transform 0.2s ease;
-    padding: 5px;
-    border-radius: 5px;
+    padding: 0.5rem; /* 8px - Larger touch target */
+    border-radius: 50%; /* Make it round */
 }
 
 .close-modal-btn:hover {
     color: #ff6b6b;
     transform: rotate(90deg);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .archive-section {
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
+    border-radius: 0.625rem; /* 10px */
+    padding: 0.9375rem; /* 15px */
+    margin-bottom: 0.9375rem; /* 15px */
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.archive-section:last-child { /* No bottom border for last section */
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
 .archive-section h3 {
     margin-top: 0;
-    margin-bottom: 10px;
-    color: #f2b5d4; /* A light pink/purple for archive sections */
+    margin-bottom: 0.9375rem; /* 15px */
+    color: #f2b5d4;
     font-size: 1.2em;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding-bottom: 5px;
+    gap: 0.5rem; /* 8px */
+    padding-bottom: 0.5rem; /* 8px */
     border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
 }
 
 .archive-item {
     background: rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    padding: 10px 15px;
-    margin-bottom: 8px;
+    border-radius: 0.5rem; /* 8px */
+    padding: 0.625rem 0.9375rem; /* 10px 15px */
+    margin-bottom: 0.5rem; /* 8px */
     display: flex;
     justify-content: space-between;
     align-items: center;
     border: 1px solid rgba(255, 255, 255, 0.08);
+    flex-wrap: wrap; /* Allow content to wrap */
+    gap: 0.3125rem; /* 5px - Spacing for wrapped content */
 }
 
 .archive-item:last-child {
@@ -652,160 +686,756 @@ body {
 .archive-item-text {
     flex-grow: 1;
     color: #e0e0e0;
+    word-break: break-word; /* Allow long text to wrap */
+    min-width: 0; /* Allow text to shrink */
 }
 
 .archive-item-date {
     font-size: 0.8em;
     color: rgba(255, 255, 255, 0.5);
-    margin-left: 15px;
+    margin-left: 0.9375rem; /* 15px */
     white-space: nowrap; /* Prevent date from wrapping */
+    flex-shrink: 0; /* Prevent date from shrinking */
 }
 
 .archive-list-task-count {
     font-size: 0.8em;
     color: rgba(255, 255, 255, 0.6);
-    margin-left: 10px;
+    margin-left: 0.625rem; /* 10px */
     background: rgba(255, 255, 255, 0.05);
-    padding: 3px 6px;
-    border-radius: 5px;
+    padding: 0.1875rem 0.375rem; /* 3px 6px */
+    border-radius: 0.3125rem; /* 5px */
+    flex-shrink: 0;
 }
 
-
-/* Media Queries for Responsiveness */
-@media (max-width: 768px) {
-    .content-area {
-        flex-direction: column; /* Stack columns vertically on smaller screens */
-        gap: 20px;
-    }
-
-    .lists-section,
-    .tasks-section {
-        min-width: unset; /* Remove min-width when stacked */
-        width: 100%; /* Take full width */
-    }
-
-    .app {
-        width: 100%; /* Take full width on smaller screens */
-        max-width: 100%;
-        padding: 20px;
-        min-height: calc(100vh - 40px);
-    }
+/* Loading Screen Styles */
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    color: #e0e0e0;
 }
 
-@media (max-width: 480px) {
-    .app {
-        padding: 15px;
-        min-height: calc(100vh - 30px);
-    }
-
-    .app-title {
-        font-size: 2em;
-    }
-
-    .add-form {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
-        padding: 12px;
-    }
-
-    .dropdown-trigger, .main-input, .add-btn, .list-tasks .add-task-form > *, .list-tasks .add-task-form button {
-        width: 100%;
-        margin-left: 0; /* Reset margins */
-        margin-right: 0;
-    }
-
-    .add-btn {
-        justify-content: center;
-    }
-
-    .task-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-        padding: 12px;
-    }
-
-    .task-actions {
-        width: 100%;
-        justify-content: flex-end;
-        margin-left: 0;
-        margin-top: 10px;
-    }
-
-    .modal-content {
-        padding: 15px;
-        max-width: 95%;
-    }
-
-    .modal-buttons {
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .modal-buttons button {
-        width: 100%;
-    }
+.loading-spinner {
+    border: 0.5rem solid #f3f3f3; /* 8px */
+    border-top: 0.5rem solid #61dafb; /* 8px */
+    border-radius: 50%;
+    width: 3.75rem; /* 60px */
+    height: 3.75rem; /* 60px */
+    animation: spin 1s linear infinite;
+    margin-bottom: 1.25rem; /* 20px */
 }
 
-/* Green blink-shadow animation for completion */
-@keyframes blink-shadow {
-  0% {
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 15px 5px rgba(144, 238, 144, 0.7), 0 4px 10px rgba(0, 0, 0, 0.2);
-  }
-  100% {
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  }
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-/* Yellow blink-shadow animation for 1 day left */
-@keyframes blink-yellow-shadow {
-  0% {
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 15px 5px rgba(255, 255, 0, 0.7), 0 4px 10px rgba(0, 0, 0, 0.2); /* Yellow highlight */
-  }
-  100% {
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  }
-}
-
-/* Red blink-shadow animation for 1 hour left */
-@keyframes blink-red-shadow {
-  0% {
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 15px 5px rgba(255, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.2); /* Red highlight, now lighter (0.5 opacity) */
-  }
-  100% {
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  }
-}
-
-/* Constant red shadow when deadline crossed */
+/* Deadline Shadows and Animations */
 .task-item.red-shadow-crossed {
-  box-shadow: 0 0 15px 5px rgba(255, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.2); /* Constant red highlight, now lighter (0.5 opacity) */
+    box-shadow: 0 0 0.9375rem 0.3125rem rgba(255, 0, 0, 0.5), 0 0.25rem 0.625rem rgba(0, 0, 0, 0.2); /* 15px 5px, 4px 10px */
 }
 
-/* No specific animation for the shadow, just a smooth highlight on completion */
+.blink-yellow-shadow {
+    animation: blink-yellow-shadow 1.5s infinite alternate;
+}
+
+.blink-red-shadow {
+    animation: blink-red-shadow 1s infinite alternate;
+}
+
+@keyframes blink-shadow {
+    0% { box-shadow: 0 0.25rem 0.625rem rgba(0, 0, 0, 0.2); } /* 4px 10px */
+    50% { box-shadow: 0 0 0.9375rem 0.3125rem rgba(144, 238, 144, 0.7), 0 0.25rem 0.625rem rgba(0, 0, 0, 0.2); } /* 15px 5px, 4px 10px */
+    100% { box-shadow: 0 0.25rem 0.625rem rgba(0, 0, 0, 0.2); } /* 4px 10px */
+}
+
+@keyframes blink-yellow-shadow {
+    0% { box-shadow: 0 0.25rem 0.625rem rgba(0, 0, 0, 0.2); } /* 4px 10px */
+    50% { box-shadow: 0 0 0.9375rem 0.3125rem rgba(255, 255, 0, 0.7), 0 0.25rem 0.625rem rgba(0, 0, 0, 0.2); } /* 15px 5px, 4px 10px */
+    100% { box-shadow: 0 0.25rem 0.625rem rgba(0, 0, 0, 0.2); } /* 4px 10px */
+}
+
+@keyframes blink-red-shadow {
+    0% { box-shadow: 0 0.25rem 0.625rem rgba(0, 0, 0, 0.2); } /* 4px 10px */
+    50% { box-shadow: 0 0 0.9375rem 0.3125rem rgba(255, 0, 0, 0.5), 0 0.25rem 0.625rem rgba(0, 0, 0, 0.2); } /* 15px 5px, 4px 10px */
+    100% { box-shadow: 0 0.25rem 0.625rem rgba(0, 0, 0, 0.2); } /* 4px 10px */
+}
+
 .list-header .checkbox.checked + .list-name {
-  text-decoration: line-through;
-  color: #888;
-  position: relative;
-  display: inline-block;
-  padding: 2px 5px;
+    text-decoration: line-through;
+    color: #888;
+    position: relative;
+    display: inline-block;
+    padding: 0.125rem 0.3125rem; /* 2px 5px */
 }
 
-/* Ensure content remains above the shadow for completed tasks and lists */
 .task-item.completed .checkbox,
 .task-item.completed .task-text,
 .todo-list-item.completed .list-header .checkbox,
 .todo-list-item.completed .list-header .list-name {
-  position: relative;
-  z-index: 1;
+    position: relative;
+    z-index: 1;
+}
+
+/* Auth Page Specific Styles */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 3rem); /* Adjust based on your .app margin (100vh - 2*1.5rem) */
+    width: 100%;
+    padding: 1.25rem; /* 20px - Add padding for mobile */
+    box-sizing: border-box;
+}
+
+.auth-form-card {
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(25px);
+    border-radius: 1.25rem; /* 20px */
+    padding: 2.5rem; /* 40px */
+    box-shadow: 0 0.9375rem 2.5rem rgba(0, 0, 0, 0.6); /* 15px 40px */
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem; /* 20px */
+    width: 100%; /* Fluid width */
+    max-width: 28.125rem; /* 450px */
+    text-align: center;
+    color: #e0e0e0;
+    box-sizing: border-box;
+}
+
+.auth-title {
+    font-size: 2.2em;
+    font-weight: 700;
+    color: #a8dadc;
+    margin-bottom: 1.5625rem; /* 25px */
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.form-group {
+    margin-bottom: 1.25rem; /* 20px */
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem; /* 8px */
+    font-size: 1em;
+    color: #c0c0c0;
+}
+
+.auth-input {
+    width: 100%;
+    padding: 0.875rem 1.125rem; /* 14px 18px */
+    border-radius: 0.625rem; /* 10px */
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 1.05em;
+    outline: none;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
+}
+
+.auth-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.auth-input:focus {
+    border-color: #87ceeb;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.auth-error-message {
+    color: #ff6b6b;
+    margin-top: -0.625rem; /* -10px */
+    margin-bottom: 0.9375rem; /* 15px */
+    font-size: 0.95em;
+    text-align: left;
+}
+
+.auth-submit-btn {
+    padding: 0.875rem 1.5625rem; /* 14px 25px */
+    border-radius: 3.125rem; /* 50px */
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    background: #61dafb;
+    color: #282c34;
+    border: none;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    transition: background 0.2s ease, transform 0.2s ease;
+    width: 100%;
+    margin-top: 0.625rem; /* 10px */
+}
+
+.auth-submit-btn:hover {
+    background: #4ab7e1;
+    transform: translateY(-0.125rem); /* -2px */
+}
+
+.auth-submit-btn:disabled {
+    background: rgba(97, 218, 251, 0.5);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.auth-switch-link {
+    margin-top: 1.5625rem; /* 25px */
+    font-size: 0.95em;
+    color: #c0c0c0;
+}
+
+.auth-switch-link span {
+    color: #a8dadc;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.auth-switch-link span:hover {
+    color: #61dafb;
+}
+
+
+/* --- Media Queries for responsiveness --- */
+
+/* Tablet and smaller screens (max-width: 1024px) */
+@media (max-width: 1024px) {
+    .app {
+        padding: 1.5rem; /* Reduced padding for medium screens */
+        gap: 1.5rem; /* Reduced gap */
+    }
+
+    .app-title {
+        font-size: 2.5em; /* Scale down title */
+    }
+
+    .add-form {
+        padding: 0.75rem; /* 12px */
+        gap: 0.625rem; /* 10px */
+    }
+
+    .main-input {
+        padding: 0.625rem 0.9375rem; /* 10px 15px */
+        font-size: 1em;
+    }
+
+    .add-btn, .toggle-archive-btn {
+        padding: 0.625rem 1.125rem; /* 10px 18px */
+        font-size: 1em;
+    }
+
+    .section-title {
+        font-size: 1.6em;
+        gap: 0.625rem; /* 10px */
+    }
+
+    .task-item, .todo-list-item {
+        padding: 1.125rem; /* 18px */
+        gap: 0.625rem; /* 10px */
+    }
+
+    .task-text {
+        font-size: 1em;
+    }
+
+    .list-name {
+        font-size: 1.2em;
+    }
+
+    .modal-content {
+        padding: 1.25rem; /* 20px */
+        gap: 0.9375rem; /* 15px */
+    }
+
+    .modal-content textarea {
+        min-height: 7.5rem; /* 120px */
+    }
+
+    .archive-modal-content {
+        padding: 1.5625rem; /* 25px */
+    }
+
+    .archive-section h3 {
+        font-size: 1.1em;
+    }
+
+    .archive-item {
+        padding: 0.5rem 0.75rem; /* 8px 12px */
+        font-size: 0.9em;
+    }
+}
+
+/* Mobile screens (max-width: 767px) */
+@media (max-width: 767px) {
+    body {
+        align-items: stretch; /* Allow content to stretch vertically */
+    }
+
+    .app {
+        width: 100%; /* Full width on mobile */
+        max-width: 100%; /* No max-width constraint */
+        padding: 1rem; /* 16px - Reduced padding */
+        margin: 0; /* No margin, stretch to edges */
+        min-height: 100vh; /* Full viewport height */
+        border-radius: 0; /* No border-radius on full screen */
+        box-shadow: none; /* No shadow when full screen */
+    }
+
+    .app-header {
+        flex-direction: column; /* Stack header elements */
+        align-items: flex-start; /* Align to left */
+        padding-bottom: 0.9375rem; /* 15px */
+        margin-bottom: 0.9375rem; /* 15px */
+    }
+
+    .app-title {
+        font-size: 2em; /* Smaller title */
+        width: 100%; /* Full width title */
+        text-align: center; /* Center align title */
+        margin-bottom: 0.625rem; /* 10px */
+    }
+
+    .user-info {
+        flex-direction: column; /* Stack user info and logout button */
+        align-items: center; /* Center align */
+        width: 100%;
+        margin-top: 0.625rem; /* 10px */
+    }
+
+    .add-form {
+        flex-direction: column; /* Stack input and buttons vertically */
+        align-items: stretch; /* Stretch items to full width */
+        gap: 0.625rem; /* 10px */
+        padding: 0.625rem; /* 10px */
+    }
+
+    .main-input {
+        width: 100%; /* Input takes full width */
+        min-width: unset; /* Remove min-width */
+    }
+
+    .add-btn, .toggle-archive-btn {
+        width: 100%; /* Buttons take full width */
+        justify-content: center; /* Center button text/icons */
+        padding: 0.75rem; /* 12px - Larger touch targets */
+        font-size: 1em;
+    }
+
+    .content-area {
+        flex-direction: column; /* Ensure sections stack */
+        gap: 1.25rem; /* 20px - Adjust gap */
+    }
+
+    .lists-section, .tasks-section {
+        min-width: unset; /* Remove min-width */
+        width: 100%;
+        padding: 0.9375rem; /* 15px */
+        border-radius: 0.75rem; /* 12px */
+    }
+
+    .section-title {
+        font-size: 1.4em;
+        margin-bottom: 0.9375rem; /* 15px */
+    }
+
+    .task-item {
+        flex-direction: column; /* Stack elements within task item */
+        align-items: flex-start; /* Align content to start */
+        padding: 0.9375rem; /* 15px */
+        border-radius: 0.75rem; /* 12px */
+        gap: 0.5rem; /* 8px - Reduced gap */
+    }
+
+    .task-details-main {
+        width: 100%;
+    }
+
+    .task-content {
+        flex-wrap: wrap;
+        width: 100%;
+        align-items: flex-start;
+    }
+
+    .checkbox {
+        width: 1.25rem; /* 20px */
+        height: 1.25rem; /* 20px */
+        flex-shrink: 0;
+    }
+
+    .task-text {
+        font-size: 0.95em;
+        /* Calculate remaining width for text considering checkbox and gap */
+        flex-basis: calc(100% - 1.875rem); /* 100% - (20px checkbox + 10px gap) */
+    }
+
+    .task-time-detail {
+        margin-left: 0; /* Remove indentation on mobile */
+        width: 100%;
+    }
+
+    .task-actions {
+        width: 100%; /* Actions take full width */
+        justify-content: flex-end; /* Align actions to the right */
+        margin-left: 0;
+        margin-top: 0.625rem; /* 10px */
+    }
+
+    .note-btn, .archive-btn {
+        flex-grow: 1; /* Allow buttons to grow */
+        min-width: 5rem; /* 80px - Ensure they don't get too small */
+    }
+
+    .todo-list-item {
+        padding: 0.9375rem; /* 15px */
+        border-radius: 0.75rem; /* 12px */
+    }
+
+    .list-header {
+        flex-direction: column; /* Stack list header content */
+        align-items: flex-start;
+        gap: 0.5rem; /* 8px */
+    }
+
+    .list-info {
+        flex-wrap: wrap;
+        width: 100%;
+        margin-bottom: 0.625rem; /* 10px */
+    }
+
+    .list-name {
+        font-size: 1.1em;
+    }
+
+    .task-count {
+        margin-left: auto; /* Push count to the right */
+    }
+
+    .list-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .modal-content, .archive-modal-content {
+        padding: 0.9375rem; /* 15px */
+        border-radius: 0.75rem; /* 12px */
+        max-width: 95%; /* Make modals almost full width */
+        max-height: 90vh; /* Adjust modal height */
+    }
+
+    .modal-header h2 {
+        font-size: 1.5em;
+    }
+
+    .close-modal-btn {
+        padding: 0.375rem; /* 6px */
+    }
+
+    .modal-buttons button {
+        width: 100%; /* Modal buttons take full width */
+        font-size: 1em;
+        padding: 0.75rem; /* 12px */
+    }
+
+    .archive-section h3 {
+        font-size: 1.1em;
+        margin-bottom: 0.625rem; /* 10px */
+    }
+
+    .archive-item {
+        flex-direction: column; /* Stack archive item content */
+        align-items: flex-start;
+        padding: 0.625rem; /* 10px */
+        gap: 0.1875rem; /* 3px */
+    }
+
+    .archive-item-date, .archive-list-task-count {
+        margin-left: 0;
+        width: 100%;
+        text-align: left;
+    }
+}
+
+/* Account Button in Header */
+.account-button {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%; /* Makes it circular */
+    width: 45px; /* Fixed size */
+    height: 45px; /* Fixed size */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    color: #a8dadc; /* Icon color */
+    flex-shrink: 0; /* Prevent shrinking */
+    margin-left: 1rem; /* Space from title */
+}
+
+.account-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.user-account-section {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Align to end */
+    flex-grow: 1; /* Allow it to take remaining space */
+}
+
+
+/* Account Modal Specific Styling (Reusing .modal-overlay, .modal-content general styles) */
+.account-modal-content {
+    max-width: 400px; /* Adjust max-width for account modal */
+    padding: 30px; /* Generous padding */
+    gap: 20px; /* Space between sections */
+    text-align: left; /* Align content inside to left */
+}
+
+.account-info-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+}
+
+.account-info-section p {
+    margin: 0 0 8px 0;
+    color: #e0e0e0;
+    font-size: 0.95em;
+    word-break: break-word; /* Ensure long emails wrap */
+}
+
+.account-info-section p:last-child {
+    margin-bottom: 0;
+}
+
+.user-id-display {
+    font-size: 0.8em !important; /* Smaller for ID */
+    color: rgba(255, 255, 255, 0.5) !important;
+    word-break: break-all !important; /* Ensure ID breaks if too long */
+}
+
+.account-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Space between action buttons/sections */
+}
+
+.action-button {
+    padding: 12px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    border: none;
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    width: 100%; /* Full width buttons */
+}
+
+.sign-out-button {
+    background: #457b9d; /* A calming blue */
+    color: #f1faee;
+}
+
+.sign-out-button:hover {
+    background: #396781;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.delete-button {
+    background: #e63946; /* A warning red */
+    color: #f1faee;
+}
+
+.delete-button:hover {
+    background: #cc2e3b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.confirm-delete-section {
+    background: rgba(255, 0, 0, 0.1); /* Light red background for warning */
+    border: 1px solid rgba(255, 0, 0, 0.3);
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: inset 0 1px 5px rgba(255, 0, 0, 0.2);
+}
+
+.delete-warning {
+    color: #ffcccc; /* Lighter red for text */
+    font-size: 0.9em;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.delete-error-message {
+    color: #ff6b6b;
+    font-size: 0.85em;
+    margin: -5px 0 5px 0;
+}
+
+.confirm-delete-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap; /* Allow buttons to wrap */
+}
+
+.confirm-delete-button {
+    background: #e63946; /* Confirm red */
+    color: #f1faee;
+    flex-grow: 1; /* Allow buttons to grow */
+    min-width: 120px; /* Ensure buttons don't become too small */
+}
+
+.confirm-delete-button:hover:not(:disabled) {
+    background: #cc2e3b;
+}
+
+.confirm-delete-button:disabled {
+    background: rgba(230, 57, 70, 0.5);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.cancel-delete-button {
+    background: rgba(255, 255, 255, 0.15); /* Cancel button style */
+    color: #f1faee;
+    flex-grow: 1;
+    min-width: 120px;
+}
+
+.cancel-delete-button:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* Adjustments for mobile for the Account Modal */
+@media (max-width: 767px) {
+    .account-button {
+        width: 40px; /* Slightly smaller on mobile */
+        height: 40px;
+        margin-left: 0; /* Align with other header elements if stacked */
+    }
+
+    .account-modal-content {
+        padding: 20px;
+        max-width: 90%; /* Take more width on mobile */
+    }
+
+    .action-button {
+        padding: 10px 15px;
+        font-size: 0.95em;
+    }
+    .confirm-delete-buttons {
+        flex-direction: column; /* Stack confirm/cancel buttons */
+    }
+}
+
+/* src/App.css (ADDITIONS) */
+
+/* Styles for the User/Admin role switch */
+.login-role-switch {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 25px;
+    margin-top: -10px; /* Adjust if needed to fit with title */
+}
+
+.role-button {
+    padding: 10px 25px;
+    border: 2px solid #a8dadc;
+    border-radius: 50px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #a8dadc;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-grow: 1; /* Allow buttons to expand */
+    max-width: 150px; /* Limit max width */
+}
+
+.role-button.active {
+    background: #a8dadc;
+    color: #282c34;
+    box-shadow: 0 0 15px rgba(168, 218, 220, 0.5);
+    transform: translateY(-2px);
+}
+
+.role-button:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+/* Admin Mode specific styling for the auth card */
+.auth-form-card.admin-mode {
+    border-color: #f2b5d4; /* Different border color for admin */
+    box-shadow: 0 15px 40px rgba(242, 181, 212, 0.3), 0 15px 40px rgba(0, 0, 0, 0.6); /* Subtle pink shadow */
+    background: rgba(0, 0, 0, 0.4); /* Slightly darker background */
+}
+
+.auth-form-card.admin-mode .auth-title {
+    color: #f2b5d4; /* Pinkish title for admin */
+    text-shadow: 2px 2px 5px rgba(242, 181, 212, 0.5);
+}
+
+.auth-form-card.admin-mode .auth-input:focus {
+    border-color: #f2b5d4;
+    box-shadow: 0 0 0 3px rgba(242, 181, 212, 0.3);
+}
+
+.auth-form-card.admin-mode .auth-submit-btn {
+    background: #f2b5d4; /* Pinkish submit button */
+    color: #282c34;
+}
+
+.auth-form-card.admin-mode .auth-submit-btn:hover {
+    background: #e0a3c2;
+}
+
+.auth-form-card.admin-mode .auth-switch-link span {
+    color: #f2b5d4;
+}
+
+.auth-form-card.admin-mode .auth-switch-link span:hover {
+    color: #e0a3c2;
+}
+
+
+/* Media Queries for Role Switch */
+@media (max-width: 480px) {
+    .login-role-switch {
+        flex-direction: column; /* Stack role buttons on very small screens */
+        gap: 10px;
+    }
+    .role-button {
+        max-width: 100%; /* Take full width when stacked */
+    }
 }

@@ -1,17 +1,17 @@
-// src/Component/Checklist.jsx
+// src/Component/Checklist.jsx (UPDATED CONTENT)
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, CheckSquare, List, Check, StickyNote, Archive, RotateCcw } from 'lucide-react';
-// Removed DatePicker import as it's no longer used for adding deadlines
-// Removed 'react-datepicker/dist/react-datepicker.css' import as DatePicker is no longer used
+import { Search, CheckSquare, List, Check, StickyNote, Archive, LogOut } from 'lucide-react'; // Removed UserRound import
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
 
-// Importing the single combined App.css
-import '../App.css'; // Path is relative to src/Component/
-
-// Import Confetti component
 import Confetti from 'react-confetti';
+import ArchiveModal from './ArchiveModal';
+import AccountModal from './AccountModal'; // Import the AccountModal
 
-// --- Internal ProgressBar Component ---
+import '../App.css';
+
+// --- Internal ProgressBar Component --- (NO CHANGE)
 const ProgressBar = ({ completedTask, total, onCompleteList }) => {
   const percentage = total === 0 ? 0 : Math.round(((completedTask / total) * 100));
 
@@ -26,7 +26,7 @@ const ProgressBar = ({ completedTask, total, onCompleteList }) => {
   );
 };
 
-// --- Internal Notes Component ---
+// --- Internal Notes Component --- (NO CHANGE)
 const Notes = ({ noteText, onChange, onClose, onSave }) => {
   return (
     <div className="modal-overlay">
@@ -45,7 +45,7 @@ const Notes = ({ noteText, onChange, onClose, onSave }) => {
   );
 };
 
-// --- Internal Task Component ---
+// --- Internal Task Component --- (NO CHANGE)
 const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore }) => {
   const [deadlineStatusClass, setDeadlineStatusClass] = useState('');
 
@@ -53,7 +53,6 @@ const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore }) => {
     let intervalId;
 
     const updateDeadlineStatus = () => {
-      // If task is completed or has no deadline, no special deadline class
       if (task.completed || !task.deadline) {
         setDeadlineStatusClass('');
         if (intervalId) clearInterval(intervalId);
@@ -62,7 +61,7 @@ const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore }) => {
 
       const now = new Date().getTime();
       const deadlineTime = new Date(task.deadline).getTime();
-      const timeRemaining = deadlineTime - now; // in milliseconds
+      const timeRemaining = deadlineTime - now;
 
       const oneHour = 60 * 60 * 1000;
       const oneDay = 24 * oneHour;
@@ -70,24 +69,22 @@ const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore }) => {
       let newClass = '';
       if (timeRemaining <= 0) {
         newClass = 'red-shadow-crossed';
-        if (intervalId) clearInterval(intervalId); // Stop checking once deadline is crossed
+        if (intervalId) clearInterval(intervalId);
       } else if (timeRemaining <= oneHour) {
         newClass = 'blink-red-shadow';
-      } else if (timeRemaining <= oneDay) { // More than 1 hour, but less than or equal to 1 day
+      } else if (timeRemaining <= oneDay) {
         newClass = 'blink-yellow-shadow';
       }
       setDeadlineStatusClass(newClass);
     };
 
-    updateDeadlineStatus(); // Initial check
-
-    // Set interval to update status more frequently for time-sensitive changes
-    intervalId = setInterval(updateDeadlineStatus, 30 * 1000); // Check every 30 seconds
+    updateDeadlineStatus();
+    intervalId = setInterval(updateDeadlineStatus, 30 * 1000);
 
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [task.deadline, task.completed]); // Re-run effect if deadline or completed status changes
+  }, [task.deadline, task.completed]);
 
   return (
     <div className={`task-item ${task.completed ? 'completed' : ''} ${deadlineStatusClass}`}>
@@ -104,7 +101,6 @@ const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore }) => {
           </span>
         </div>
 
-        {/* Display Assigned Time and Deadline below the task content */}
         <div style={{ marginLeft: '30px', marginTop: '5px' }}>
           {task.assignedTime && (
             <div className="task-time-detail">Assigned: {task.assignedTime}</div>
@@ -135,7 +131,7 @@ const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore }) => {
   );
 };
 
-// --- Internal TodoList Component ---
+// --- Internal TodoList Component --- (NO CHANGE)
 const TodoList = ({
   list,
   onComplete,
@@ -159,7 +155,7 @@ const TodoList = ({
         <div className="list-info">
           <button
             onClick={() => onComplete(list.id)}
-            className={`checkbox ${list.completed ? "checked" : ""}`}
+            className={`checkbox ${list.completed ? 'checked' : ''}`}
           >
             {list.completed && <Check size={12} />}
           </button>
@@ -217,8 +213,7 @@ const TodoList = ({
 
 
 // --- Main Checklist Component ---
-const Checklist = () => {
-  // --- State Management ---
+const Checklist = ({ user }) => {
   const [tasks, setTasks] = useState([]);
   const [lists, setLists] = useState([]);
   const [archivedTasks, setArchivedTasks] = useState([]);
@@ -226,143 +221,117 @@ const Checklist = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false); // State for AccountModal
 
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
-
-  // Notes Modal State
   const [editingNoteTaskId, setEditingNoteTaskId] = useState(null);
   const [editingNoteListId, setEditingNoteListId] = useState(null);
   const [currentNoteText, setCurrentNoteText] = useState('');
 
-  // Confetti State
   const [showConfetti, setShowConfetti] = useState(false);
-  const [confettiKey, setConfettiKey] = useState(0); // Key to force re-render/re-trigger confetti
+  const [confettiKey, setConfettiKey] = useState(0);
 
-  // Ref for the .app container to get its dimensions for confetti
-  const appRef = useRef(null);
-  const [appWidth, setAppWidth] = useState(0);
-  const [appHeight, setAppHeight] = useState(0);
+  const checklistRef = useRef(null);
+  const [checklistWidth, setChecklistWidth] = useState(0);
+  const [checklistHeight, setChecklistHeight] = useState(0);
 
-  // --- Effect to get app container dimensions ---
   useEffect(() => {
     const handleResize = () => {
-      if (appRef.current) {
-        setAppWidth(appRef.current.offsetWidth);
-        setAppHeight(appRef.current.offsetHeight);
+      if (checklistRef.current) {
+        setChecklistWidth(checklistRef.current.offsetWidth);
+        setChecklistHeight(checklistRef.current.offsetHeight);
       }
     };
 
-    // Set initial dimensions
     handleResize();
-
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []); // Empty dependency array means this runs once on mount and on unmount for cleanup
-
-
-  // --- Local Storage Effects ---
-  useEffect(() => {
-    let taskString = localStorage.getItem("tasks")
-    let listString = localStorage.getItem("lists")
-    let archivedTaskString = localStorage.getItem("archivedTasks")
-    let archivedListString = localStorage.getItem("archivedLists")
-
-    if (taskString) {
-      let tasks = JSON.parse(taskString)
-      setTasks(tasks)
-    }
-
-    if (listString) {
-      let lists = JSON.parse(listString)
-      setLists(lists)
-    }
-
-    if (archivedTaskString) {
-      let archivedTasks = JSON.parse(archivedTaskString)
-      setArchivedTasks(archivedTasks)
-    }
-
-    if (archivedListString) {
-      let archivedLists = JSON.parse(archivedListString)
-      setArchivedLists(archivedLists)
-    }
-
-    setIsDataLoaded(true);
-  }, [])
+  }, []);
 
   useEffect(() => {
-    if (isDataLoaded) {
-      localStorage.setItem("tasks", JSON.stringify(tasks))
+    if (user) {
+      let taskString = localStorage.getItem(`tasks_${user.uid}`);
+      let listString = localStorage.getItem(`lists_${user.uid}`);
+      let archivedTaskString = localStorage.getItem(`archivedTasks_${user.uid}`);
+      let archivedListString = localStorage.getItem(`archivedLists_${user.uid}`);
+
+      setTasks(taskString ? JSON.parse(taskString) : []);
+      setLists(listString ? JSON.parse(listString) : []);
+      setArchivedTasks(archivedTaskString ? JSON.parse(archivedTaskString) : []);
+      setArchivedLists(archivedListString ? JSON.parse(archivedListString) : []);
+    } else {
+      setTasks([]);
+      setLists([]);
+      setArchivedTasks([]);
+      setArchivedLists([]);
     }
-  }, [tasks, isDataLoaded])
+  }, [user]);
 
   useEffect(() => {
-    if (isDataLoaded) {
-      localStorage.setItem("lists", JSON.stringify(lists))
+    if (user) {
+      localStorage.setItem(`tasks_${user.uid}`, JSON.stringify(tasks));
     }
-  }, [lists, isDataLoaded])
+  }, [tasks, user]);
 
   useEffect(() => {
-    if (isDataLoaded) {
-      localStorage.setItem("archivedTasks", JSON.stringify(archivedTasks))
+    if (user) {
+      localStorage.setItem(`lists_${user.uid}`, JSON.stringify(lists));
     }
-  }, [archivedTasks, isDataLoaded])
+  }, [lists, user]);
 
   useEffect(() => {
-    if (isDataLoaded) {
-      localStorage.setItem("archivedLists", JSON.stringify(archivedLists))
+    if (user) {
+      localStorage.setItem(`archivedTasks_${user.uid}`, JSON.stringify(archivedTasks));
     }
-  }, [archivedLists, isDataLoaded])
+  }, [archivedTasks, user]);
 
-  // --- Confetti Trigger Function ---
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem(`archivedLists_${user.uid}`, JSON.stringify(archivedLists));
+    }
+  }, [archivedLists, user]);
+
   const triggerConfetti = () => {
     setShowConfetti(true);
-    setConfettiKey(prev => prev + 1); // Increment key to force confetti re-render
+    setConfettiKey(prev => prev + 1);
     setTimeout(() => {
       setShowConfetti(false);
-    }, 4000); // Confetti lasts for 4 seconds
+    }, 4000);
   };
 
-  // --- Task Functions (Complete, Archive, Restore) ---
   const completeTask = (id) => {
     setTasks(prevTasks => prevTasks.map(task => {
       if (task.id === id) {
         const updatedTask = { ...task, completed: !task.completed };
         if (updatedTask.completed) {
           triggerConfetti();
-          // Move to archivedTasks if completed
-          setArchivedTasks(prevArchived => [...prevArchived, { ...updatedTask, archived: true }]);
-          return null; // Mark for removal from current tasks
+          setArchivedTasks(prevArchived => [...prevArchived, { ...updatedTask, archived: true, archivedAt: new Date().toISOString(), type: 'task', archivedReason: 'completed' }]);
+          return null;
         }
         return updatedTask;
       }
       return task;
-    }).filter(task => task !== null)); // Filter out nulls (completed and moved tasks)
+    }).filter(task => task !== null));
   };
 
   const archiveTask = (id) => {
     setTasks(prevTasks => prevTasks.map(task => {
       if (task.id === id) {
-        // Move to archivedTasks
-        setArchivedTasks(prevArchived => [...prevArchived, { ...task, archived: true }]);
-        return null; // Mark for removal from current tasks
+        setArchivedTasks(prevArchived => [...prevArchived, { ...task, archived: true, archivedAt: new Date().toISOString(), type: 'task', archivedReason: 'deleted' }]);
+        return null;
       }
       return task;
-    }).filter(task => task !== null)); // Filter out nulls (archived tasks)
+    }).filter(task => task !== null));
   };
 
   const restoreTask = (id) => {
-    setArchivedTasks(prevArchived => prevArchived.map(task => {
-      if (task.id === id) {
-        // Move back to tasks
-        setTasks(prevTasks => [...prevTasks, { ...task, archived: false }]);
-        return null; // Mark for removal from archived tasks
-      }
-      return task;
-    }).filter(task => task !== null)); // Filter out nulls (restored tasks)
+    setArchivedTasks(prevArchived => prevArchived.filter(task => task.id !== id));
+    const taskToRestore = archivedTasks.find(task => task.id === id);
+    if (taskToRestore) {
+      setTasks(prevTasks => [...prevTasks, { ...taskToRestore, archived: false, completed: false }]);
+    }
   };
 
-  // --- Notes Management Functions ---
   const handleOpenNotes = (taskId, initialNote) => {
     setEditingNoteTaskId(taskId);
     setEditingNoteListId(null);
@@ -383,7 +352,6 @@ const Checklist = () => {
 
   const handleSaveNote = () => {
     if (editingNoteListId) {
-      // Save note for a task within a list
       setLists(lists.map(list =>
         list.id === editingNoteListId
           ? {
@@ -394,7 +362,6 @@ const Checklist = () => {
           }
           : list
       ));
-      // Also check archived lists for the task
       setArchivedLists(prevArchivedLists => prevArchivedLists.map(list =>
         list.id === editingNoteListId
           ? {
@@ -406,76 +373,68 @@ const Checklist = () => {
           : list
       ));
     } else {
-      // Save note for a standalone task
       setTasks(tasks.map(task =>
         task.id === editingNoteTaskId ? { ...task, note: currentNoteText } : task
       ));
-      // Also check archived tasks
       setArchivedTasks(prevArchivedTasks => prevArchivedTasks.map(task =>
         task.id === editingNoteTaskId ? { ...task, note: currentNoteText } : task
       ));
     }
-    handleCloseNotes(); // Close modal after saving
+    handleCloseNotes();
   };
 
-  // --- List Functions (Complete, Archive, Restore) ---
   const completeList = (id) => {
     setLists(prevLists => prevLists.map(list => {
       if (list.id === id) {
         const updatedList = { ...list, completed: !list.completed };
         if (updatedList.completed) {
           triggerConfetti();
-          // Mark all tasks in the list as completed
-          updatedList.tasks = updatedList.tasks.map(task => ({ ...task, completed: true }));
-          // Move to archivedLists if completed
-          setArchivedLists(prevArchived => [...prevArchived, { ...updatedList, archived: true }]);
-          return null; // Mark for removal from current lists
+          updatedList.tasks = updatedList.tasks.map(task => ({ ...task, completed: true, archived: true }));
+          setArchivedLists(prevArchived => [...prevArchived, { ...updatedList, archived: true, archivedAt: new Date().toISOString(), type: 'list', archivedReason: 'completed' }]);
+          return null;
         }
         return updatedList;
       }
       return list;
-    }).filter(list => list !== null)); // Filter out nulls (completed and moved lists)
+    }).filter(list => list !== null));
   };
 
   const archiveList = (id) => {
     setLists(prevLists => prevLists.map(list => {
       if (list.id === id) {
-        // Move to archivedLists
-        setArchivedLists(prevArchived => [...prevArchived, { ...list, archived: true }]);
-        return null; // Mark for removal from current lists
+        setArchivedLists(prevArchived => [...prevArchived, { ...list, archived: true, archivedAt: new Date().toISOString(), type: 'list', archivedReason: 'deleted' }]);
+        return null;
       }
       return list;
-    }).filter(list => list !== null)); // Filter out nulls (archived lists)
+    }).filter(list => list !== null));
   };
 
   const restoreList = (id) => {
-    setArchivedLists(prevArchived => prevArchived.map(list => {
-      if (list.id === id) {
-        // Move back to lists
-        setLists(prevLists => [...prevLists, { ...list, archived: false }]);
-        return null; // Mark for removal from archived lists
-      }
-      return list;
-    }).filter(list => list !== null)); // Filter out nulls (restored lists)
+    setArchivedLists(prevArchived => prevArchived.filter(list => list.id !== id));
+    const listToRestore = archivedLists.find(list => list.id === id);
+    if (listToRestore) {
+      setLists(prevLists => [...prevLists, { ...listToRestore, archived: false, completed: false, tasks: listToRestore.tasks.map(task => ({...task, archived: false, completed: false})) }]);
+    }
   };
 
   const completeTaskInList = (listId, taskId) => {
     setLists(prevLists => prevLists.map(list => {
       if (list.id === listId) {
+        const updatedTasks = list.tasks.map(task => {
+          if (task.id === taskId) {
+            const updatedTask = { ...task, completed: !task.completed };
+            if (updatedTask.completed) {
+              triggerConfetti();
+            }
+            return updatedTask;
+          }
+          return task;
+        });
+        const allTasksCompleted = updatedTasks.every(task => task.completed);
         return {
           ...list,
-          tasks: list.tasks.map(task => {
-            if (task.id === taskId) {
-              const updatedTask = { ...task, completed: !task.completed };
-              if (updatedTask.completed) {
-                triggerConfetti();
-                // Move to archivedTasks *within* the list if completed
-                return { ...updatedTask, archived: true }; // Mark as archived within the list structure
-              }
-              return updatedTask;
-            }
-            return task;
-          })
+          tasks: updatedTasks,
+          completed: allTasksCompleted
         };
       }
       return list;
@@ -500,47 +459,31 @@ const Checklist = () => {
   };
 
   const restoreTaskInList = (listId, taskId) => {
-    setArchivedLists(prevArchivedLists => prevArchivedLists.map(list => {
-      if (list.id === listId) {
-        return {
-          ...list,
-          tasks: list.tasks.map(task => {
-            if (task.id === taskId) {
-              return { ...task, archived: false };
-            }
-            return task;
-          })
-        };
-      }
-      return list;
-    }));
-    // Also add it back to the active list if it was a task in a list that was restored.
     setLists(prevLists => prevLists.map(list => {
-      if (list.id === listId) {
-        const taskToRestore = archivedLists.find(al => al.id === listId)?.tasks.find(t => t.id === taskId);
-        if (taskToRestore && !list.tasks.some(t => t.id === taskId)) {
-          return {
-            ...list,
-            tasks: [...list.tasks, { ...taskToRestore, archived: false }]
-          };
+        if (list.id === listId) {
+            const updatedTasks = list.tasks.map(task => {
+                if (task.id === taskId) {
+                    return { ...task, archived: false, completed: false };
+                }
+                return task;
+            });
+            return { ...list, tasks: updatedTasks };
         }
-      }
-      return list;
+        return list;
     }));
   };
 
-  // --- Filtering Logic ---
   const allTasks = [...tasks, ...archivedTasks];
   const allLists = [...lists, ...archivedLists];
 
   const filteredTasks = allTasks.filter(task =>
-    (showArchived ? task.archived : !task.archived) && // Filter based on showArchived state
+    (showArchived ? task.archived : !task.archived) &&
     (task.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (task.note && task.note.toLowerCase().includes(searchQuery.toLowerCase())))
   );
 
   const filteredLists = allLists.filter(list =>
-    (showArchived ? list.archived : !list.archived) && // Filter based on showArchived state
+    (showArchived ? list.archived : !list.archived) &&
     (list.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       list.tasks.some(task =>
         task.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -548,35 +491,64 @@ const Checklist = () => {
       ))
   );
 
-  // Calculate completed and total for main tasks section
   const totalMainTasks = filteredTasks.length;
   const completedMainTasks = filteredTasks.filter(t => t.completed).length;
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // Clear all local storage data for the user on logout
+      localStorage.removeItem(`tasks_${user.uid}`);
+      localStorage.removeItem(`lists_${user.uid}`);
+      localStorage.removeItem(`archivedTasks_${user.uid}`);
+      localStorage.removeItem(`archivedLists_${user.uid}`);
+      console.log("User logged out and local data cleared.");
+      // App.jsx's onAuthStateChanged listener will handle redirect
+      setShowAccountModal(false); // Close the modal on logout
+    } catch (error) {
+      console.error("Error logging out:", error.message);
+    }
+  };
+
+  const allArchivedItems = [...archivedTasks, ...archivedLists];
 
   return (
-    <div className="app" ref={appRef}> {/* Attach ref to the outermost blur bubble */}
+    <div className="checklist-content" ref={checklistRef}>
       <div className="app-header">
         <h1 className="app-title">Secure Checklist</h1>
+        {user && (
+          <div className="user-account-section">
+            {/* Account Icon Button - Now using an emoji */}
+            <button
+              onClick={() => setShowAccountModal(true)}
+              className="account-button"
+              title="My Account"
+            >
+              <span style={{ fontSize: '2em', lineHeight: '1em' }}>👤</span> {/* Emoji for user */}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Search Bar */}
-      <div className="add-form"> {/* Reusing add-form class for styling convenience */}
+      <div className="add-form">
         <Search size={20} color="#a8dadc" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search tasks or lists..."
-          className="main-input" // Reusing main-input for styling
+          className="main-input"
         />
         <button onClick={() => setShowArchived(!showArchived)} className="toggle-archive-btn">
           {showArchived ? "Show Active" : "Show Archived"}
         </button>
+        <button onClick={() => setShowArchiveModal(true)} className="add-btn secondary" style={{ marginLeft: '10px' }}>
+          <Archive size={16} /> Archive Log
+        </button>
       </div>
 
       <div className="content-area">
-        {/* Tasks Section */}
-        {filteredTasks.length > 0 && (
+        {(filteredTasks.length > 0 || !showArchived) && (
           <div className="tasks-section">
             <h2 className="section-title">
               <CheckSquare size={20} />
@@ -594,15 +566,19 @@ const Checklist = () => {
                 />
               ))}
             </div>
-            {/* Add ProgressBar for Tasks Section */}
             {totalMainTasks > 0 && (
               <ProgressBar completedTask={completedMainTasks} total={totalMainTasks} onCompleteList={false} />
+            )}
+            {filteredTasks.length === 0 && searchQuery === '' && !showArchived && (
+                <p className="empty-state">No active tasks yet. Add one above!</p>
+            )}
+             {filteredTasks.length === 0 && searchQuery === '' && showArchived && (
+                <p className="empty-state">No archived tasks.</p>
             )}
           </div>
         )}
 
-        {/* Lists Section */}
-        {filteredLists.length > 0 && (
+        {(filteredLists.length > 0 || !showArchived) && (
           <div className="lists-section">
             <h2 className="section-title">
               <List size={20} />
@@ -623,18 +599,22 @@ const Checklist = () => {
                 />
               ))}
             </div>
+             {filteredLists.length === 0 && searchQuery === '' && !showArchived && (
+                <p className="empty-state">No active lists yet. Add one above!</p>
+            )}
+            {filteredLists.length === 0 && searchQuery === '' && showArchived && (
+                <p className="empty-state">No archived lists.</p>
+            )}
           </div>
         )}
 
-        {/* Empty State for search results or no data */}
-        {filteredTasks.length === 0 && filteredLists.length === 0 && (
+        {searchQuery !== '' && filteredTasks.length === 0 && filteredLists.length === 0 && (
           <div className="empty-state">
-            <p>No matching tasks or lists found.</p>
+            <p>No matching tasks or lists found for "{searchQuery}".</p>
           </div>
         )}
       </div>
 
-      {/* Notes Modal - Rendered globally based on editingNoteTaskId */}
       {(editingNoteTaskId !== null) && (
         <Notes
           noteText={currentNoteText}
@@ -644,46 +624,46 @@ const Checklist = () => {
         />
       )}
 
-      {/* Confetti Component - Left Side */}
-      {showConfetti && appWidth > 0 && appHeight > 0 && (
-        <Confetti
-          key={`left-confetti-${confettiKey}`} // Unique key for left confetti
-          width={appWidth}
-          height={appHeight}
-          recycle={false}
-          numberOfPieces={125} // Half the total pieces for each side
-          gravity={0.15}
-          wind={0.05} // Blows slightly right
-          confettiSource={{
-            x: 0, // Start from the extreme left edge
-            y: 0,
-            w: 50, // Narrow strip for left side
-            h: appHeight, // Span full height of the app container
-          }}
-          tweenDuration={4000}
-          colors={['#a8dadc', '#61dafb', '#f2b5d4', '#e0e0e0', '#87ceeb']}
+      {showArchiveModal && (
+        <ArchiveModal archivedItems={allArchivedItems} onClose={() => setShowArchiveModal(false)} />
+      )}
+
+      {/* Account Modal */}
+      {showAccountModal && user && (
+        <AccountModal
+          user={user}
+          onClose={() => setShowAccountModal(false)}
+          onSignOut={handleLogout} // Pass the existing logout handler
         />
       )}
 
-      {/* Confetti Component - Right Side */}
-      {showConfetti && appWidth > 0 && appHeight > 0 && (
-        <Confetti
-          key={`right-confetti-${confettiKey}`} // Unique key for right confetti
-          width={appWidth}
-          height={appHeight}
-          recycle={false}
-          numberOfPieces={125} // Half the total pieces for each side
-          gravity={0.15}
-          wind={-0.05} // Blows slightly left
-          confettiSource={{
-            x: appWidth - 50, // Start from the extreme right edge
-            y: 0,
-            w: 50, // Narrow strip for right side
-            h: appHeight, // Span full height of the app container
-          }}
-          tweenDuration={4000}
-          colors={['#a8dadc', '#61dafb', '#f2b5d4', '#e0e0e0', '#87ceeb']}
-        />
+      {showConfetti && checklistWidth > 0 && checklistHeight > 0 && (
+        <>
+          <Confetti
+            key={`left-confetti-${confettiKey}`}
+            width={checklistWidth}
+            height={checklistHeight}
+            recycle={false}
+            numberOfPieces={125}
+            gravity={0.15}
+            wind={0.05}
+            confettiSource={{ x: 0, y: 0, w: 50, h: checklistHeight }}
+            tweenDuration={4000}
+            colors={['#a8dadc', '#61dafb', '#f2b5d4', '#e0e0e0', '#87ceeb']}
+          />
+          <Confetti
+            key={`right-confetti-${confettiKey}`}
+            width={checklistWidth}
+            height={checklistHeight}
+            recycle={false}
+            numberOfPieces={125}
+            gravity={0.15}
+            wind={-0.05}
+            confettiSource={{ x: checklistWidth - 50, y: 0, w: 50, h: checklistHeight }}
+            tweenDuration={4000}
+            colors={['#a8dadc', '#61dafb', '#f2b5d4', '#e0e0e0', '#87ceeb']}
+          />
+        </>
       )}
     </div>
   );
