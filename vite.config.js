@@ -1,4 +1,4 @@
-// vite.config.js (UPDATED - Ensure public assets are copied)
+// vite.config.js (UPDATED - Explicitly set publicDir)
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -6,10 +6,11 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
+    // Explicitly set the public directory. This is the default,
+    // but stating it can sometimes help Vite correctly copy assets.
+    publicDir: 'public',
     // Ensures that assets from the public directory are copied to the output directory
     // This is typically default behavior, but explicitly setting it can help resolve issues.
-    // If you had a custom public directory, you'd define it here: publicDir: 'path/to/my-public-assets'
-    // For now, we'll ensure default behavior.
   },
   server: {
     // Set a port for local development
