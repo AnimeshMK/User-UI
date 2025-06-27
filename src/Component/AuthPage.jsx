@@ -1,4 +1,4 @@
-// src/Component/AuthPage.jsx (UPDATED - Explicitly Completing Auth Action)
+// src/Component/AuthPage.jsx (FINAL - Saves User Data to Firestore on Registration)
 import React, { useState } from 'react';
 import {
   createUserWithEmailAndPassword,
@@ -6,7 +6,9 @@ import {
   updateProfile,
   signOut
 } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
+// *** IMPORTANT: Add Firestore imports here ***
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../firebaseConfig'; // *** IMPORTANT: Make sure db is imported ***
 import '../App.css';
 
 // Accept both onAuthActionStart and onAuthActionComplete props
@@ -65,13 +67,23 @@ const AuthPage = ({ onLoginSuccess, onAuthActionStart, onAuthActionComplete }) =
           console.log('User display name updated:', fullName);
         }
 
+        // **** CRUCIAL ADDITION: Save user's role and profile data to Firestore ****
+        // This creates a document in the 'users' collection with the user's UID as its ID.
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email,
+          fullName: fullName,
+          mobileNumber: mobileNumber,
+          role: 'user', // Default role for self-registered users
+          createdAt: serverTimestamp(), // Use Firestore's server timestamp
+        });
+        console.log('User profile saved to Firestore with role "user".');
+
         console.log('User registered successfully!', user);
 
-        // Immediately sign out after registration.
-        // App.jsx will stay in a loading state until this signOut settles.
+        // Immediately sign out after registration to ensure App.jsx detects no active user.
         await signOut(auth);
 
-        // After signOut, Firebase's onAuthStateChanged in App.jsx will be triggered to null user.
+        // After signOut, Firebase's onAuthStateChanged in App.jsx will be triggered for null user.
         // App.jsx's listener will then handle setting isAuthTransitioning to false.
         // So, we only need to update AuthPage's local state for the next render.
         setIsLogin(true); // Switch AuthPage to Login view
