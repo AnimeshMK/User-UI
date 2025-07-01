@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, CheckSquare, List, Check, StickyNote, Archive, LogOut, RotateCcw, Trash2 } from 'lucide-react'; // Added RotateCcw and Trash2 import
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig'; // Import db
-import { collection, addDoc, updateDoc, deleteDoc, query, where, onSnapshot, doc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore'; // Import Firestore functions
+import { collection, addDoc, updateDoc, deleteDoc, query, where, onSnapshot, doc, serverTimestamp, arrayUnion, arrayRemove, getDocs } from 'firebase/firestore'; // Import Firestore functions
 
 import Confetti from 'react-confetti';
 import ArchiveModal from './ArchiveModal';
@@ -313,6 +313,8 @@ const Checklist = ({ user }) => {
 
   // Firestore Listeners
   useEffect(() => {
+    console.log(user);
+
     if (!user) {
       setTasks([]);
       setLists([]);
@@ -323,16 +325,16 @@ const Checklist = ({ user }) => {
     setLoading(true);
     setError(null);
 
-    const tasksCollectionRef = collection(db, 'tasks');
-    const listsCollectionRef = collection(db, 'lists');
-
+    const usersCollectionRef = collection(db, 'users');
+    
     // Query for tasks assigned to the current user
-    const qTasks = query(tasksCollectionRef, where('assignedTo', '==', user.uid));
+    const qTasks = query(usersCollectionRef, where('id', '==', user.uid));
     const unsubscribeTasks = onSnapshot(qTasks, (snapshot) => {
       const fetchedTasks = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      console.log(fetchedTasks);
       setTasks(fetchedTasks);
       setLoading(false);
     }, (err) => {
@@ -341,27 +343,50 @@ const Checklist = ({ user }) => {
       setLoading(false);
     });
 
-    // Query for lists assigned to the current user
-    const qLists = query(listsCollectionRef, where('assignedTo', '==', user.uid));
-    const unsubscribeLists = onSnapshot(qLists, (snapshot) => {
-      const fetchedLists = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setLists(fetchedLists);
-      setLoading(false); // Can be set here or after both are loaded
-    }, (err) => {
-      console.error("Error fetching lists:", err);
-      setError("Failed to load lists. Please try again.");
-      setLoading(false);
-    });
-
     return () => {
       unsubscribeTasks();
-      unsubscribeLists();
     };
   }, [user]); // Re-run when user changes
 
+  // async function fetchUsersFromFirebase() {
+  //   try {
+  //     const usersCollection = collection(db, "users");
+  //     const querySnapshot = await getDocs(usersCollection);
+
+  //     if (querySnapshot.empty) {
+  //       console.log("No users found in the database");
+  //       return [];
+  //     }
+
+  //     const users = [];
+  //     querySnapshot.forEach((docSnap) => {
+  //       const data = docSnap.data();
+
+  //       // More comprehensive validation
+  //       if (data && typeof data === 'object') {
+  //         users.push({
+  //           docId: docSnap.id,
+  //           id: data.id || docSnap.id, 
+  //           name: data.name || data.fullName ||'Unknown',
+  //           tasks: data.tasks  ||[],
+  //           lists: data.lists  ||[],
+  //           completed: data.completed || false,
+  //           visible: data.visible !== false, 
+  //           notes: data.notes || ''
+  //         });
+  //       }
+  //     });
+
+  //     console.log(`Fetched ${users.length} users from Firebase:`, users);
+  //     setLists(users);
+  //     return users;
+  //   } catch (error) {
+  //     console.error("Error fetching users from Firebase:", error);
+  //     return [];
+  //   }
+  // }
+
+  // fetchUsersFromFirebase();
 
   const triggerConfetti = () => {
     setShowConfetti(true);
