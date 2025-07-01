@@ -69,16 +69,16 @@ const AuthPage = ({ onLoginSuccess, onAuthActionStart, onAuthActionComplete }) =
 
         // **** CRUCIAL ADDITION: Save user's role and profile data to Firestore ****
         // This creates a document in the 'users' collection with the user's UID as its ID.
-        await setDoc(doc(db, "users", user.uid), {
+        await setDoc(doc(db, "users", fullName), {
           id: user.uid,
           email: user.email,
           fullName: fullName,
           displayName: fullName,
-          lists: [],
-          tasks: [],
           mobileNumber: mobileNumber,
           role: 'user', // Default role for self-registered users
-          createdAt: serverTimestamp(), // Use Firestore's server timestamp
+          createdAt: serverTimestamp(), // Use Firestore's server timestamp          
+          lists: [],
+          tasks: [],
         });
         console.log('User profile saved to Firestore with role "user".');
 
