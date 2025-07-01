@@ -1,9 +1,10 @@
 // src/Component/Checklist.jsx (UPDATED CONTENT)
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, CheckSquare, List, Check, StickyNote, Archive, LogOut } from 'lucide-react'; // Removed UserRound import
+import { Search, CheckSquare, List, Check, StickyNote, Archive, LogOut, RotateCcw, Trash2 } from 'lucide-react'; // Added RotateCcw and Trash2 import
 import { signOut } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig'; // Import db
+import { collection, addDoc, updateDoc, deleteDoc, query, where, onSnapshot, doc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore'; // Import Firestore functions
 
 import Confetti from 'react-confetti';
 import ArchiveModal from './ArchiveModal';
@@ -45,8 +46,8 @@ const Notes = ({ noteText, onChange, onClose, onSave }) => {
   );
 };
 
-// --- Internal Task Component --- (NO CHANGE)
-const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore }) => {
+// --- Internal Task Component --- (NO CHANGE, but assumes task object has Firestore ID)
+const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore, onDelete }) => { // Added onDelete
   const [deadlineStatusClass, setDeadlineStatusClass] = useState('');
 
   useEffect(() => {
@@ -118,9 +119,14 @@ const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore }) => {
           <StickyNote size={16} />
         </button>
         {task.archived ? (
-          <button onClick={() => onRestore(task.id)} className="archive-btn">
-            <RotateCcw size={16} />
-          </button>
+          <>
+            <button onClick={() => onRestore(task.id)} className="archive-btn">
+              <RotateCcw size={16} />
+            </button>
+            <button onClick={() => onDelete(task.id, task.type)} className="delete-btn">
+              <Trash2 size={16} />
+            </button>
+          </>
         ) : (
           <button onClick={() => onArchive(task.id)} className="archive-btn">
             <Archive size={16} />
@@ -131,7 +137,7 @@ const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore }) => {
   );
 };
 
-// --- Internal TodoList Component --- (NO CHANGE)
+// --- Internal TodoList Component --- (NO CHANGE, but assumes list object has Firestore ID)
 const TodoList = ({
   list,
   onComplete,
@@ -140,14 +146,16 @@ const TodoList = ({
   onArchive,
   onRestore,
   onArchiveTaskInList,
-  onRestoreTaskInList
+  onRestoreTaskInList,
+  onDeleteList, // Added onDeleteList
+  onDeleteTaskInList // Added onDeleteTaskInList
 }) => {
   const [showTasks, setShowTasks] = useState(false);
 
-  const totalTasks = list.tasks.length;
+  const totalTasks = list.tasks ? list.tasks.length : 0;
   const completedTasks = list.completed
     ? totalTasks
-    : list.tasks.filter((task) => task.completed).length;
+    : (list.tasks ? list.tasks.filter((task) => task.completed).length : 0);
 
   return (
     <div className={`todo-list-item ${list.completed ? "completed" : ""}`}>
@@ -174,9 +182,14 @@ const TodoList = ({
             <List size={16} />
           </button>
           {list.archived ? (
-            <button onClick={() => onRestore(list.id)} className="archive-btn">
-              <RotateCcw size={16} />
-            </button>
+            <>
+              <button onClick={() => onRestore(list.id)} className="archive-btn">
+                <RotateCcw size={16} />
+              </button>
+              <button onClick={() => onDeleteList(list.id)} className="delete-btn">
+                <Trash2 size={16} />
+              </button>
+            </>
           ) : (
             <button onClick={() => onArchive(list.id)} className="archive-btn">
               <Archive size={16} />
@@ -188,7 +201,7 @@ const TodoList = ({
       {showTasks && (
         <div className="list-tasks">
           <div className="tasks-container">
-            {list.tasks.map((task) => (
+            {list.tasks && list.tasks.map((task) => (
               <Task
                 key={task.id}
                 task={task}
@@ -196,15 +209,16 @@ const TodoList = ({
                 onOpenNotes={(taskId, initialNote) => onOpenNotes(list.id, taskId, initialNote)}
                 onArchive={(taskId) => onArchiveTaskInList(list.id, taskId)}
                 onRestore={(taskId) => onRestoreTaskInList(list.id, taskId)}
+                onDelete={(taskId) => onDeleteTaskInList(list.id, taskId)} // Pass new delete handler
               />
             ))}
-            {list.tasks.length === 0 && (
+            {totalTasks === 0 && (
               <p className="empty-state">No tasks in this list yet.</p>
             )}
           </div>
         </div>
       )}
-      {list.tasks.length > 0 && (
+      {totalTasks > 0 && (
         <ProgressBar completedTask={completedTasks} total={totalTasks} onCompleteList={list.completed} />
       )}
     </div>
@@ -216,13 +230,14 @@ const TodoList = ({
 const Checklist = ({ user }) => {
   const [tasks, setTasks] = useState([]);
   const [lists, setLists] = useState([]);
-  const [archivedTasks, setArchivedTasks] = useState([]);
-  const [archivedLists, setArchivedLists] = useState([]);
+  // archivedTasks and archivedLists will be derived from 'tasks' and 'lists' from Firestore
+  // const [archivedTasks, setArchivedTasks] = useState([]); // No longer needed as a separate state
+  // const [archivedLists, setArchivedLists] = useState([]); // No longer needed as a separate state
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
-  const [showAccountModal, setShowAccountModal] = useState(false); // State for AccountModal
+  const [showAccountModal, setShowAccountModal] = useState(false);
 
   const [editingNoteTaskId, setEditingNoteTaskId] = useState(null);
   const [editingNoteListId, setEditingNoteListId] = useState(null);
@@ -234,6 +249,9 @@ const Checklist = ({ user }) => {
   const checklistRef = useRef(null);
   const [checklistWidth, setChecklistWidth] = useState(0);
   const [checklistHeight, setChecklistHeight] = useState(0);
+
+  const [loading, setLoading] = useState(true); // For Firestore loading
+  const [error, setError] = useState(null); // For Firestore errors
 
   useEffect(() => {
     const handleResize = () => {
@@ -248,48 +266,102 @@ const Checklist = ({ user }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      let taskString = localStorage.getItem(`tasks_${user.uid}`);
-      let listString = localStorage.getItem(`lists_${user.uid}`);
-      let archivedTaskString = localStorage.getItem(`archivedTasks_${user.uid}`);
-      let archivedListString = localStorage.getItem(`archivedLists_${user.uid}`);
+  // Remove all localStorage useEffects as data will be fetched from Firestore
+  // useEffect(() => {
+  //   if (user) {
+  //     let taskString = localStorage.getItem(`tasks_${user.uid}`);
+  //     let listString = localStorage.getItem(`lists_${user.uid}`);
+  //     let archivedTaskString = localStorage.getItem(`archivedTasks_${user.uid}`);
+  //     let archivedListString = localStorage.getItem(`archivedLists_${user.uid}`);
 
-      setTasks(taskString ? JSON.parse(taskString) : []);
-      setLists(listString ? JSON.parse(listString) : []);
-      setArchivedTasks(archivedTaskString ? JSON.parse(archivedTaskString) : []);
-      setArchivedLists(archivedListString ? JSON.parse(archivedListString) : []);
-    } else {
+  //     setTasks(taskString ? JSON.parse(taskString) : []);
+  //     setLists(listString ? JSON.parse(listString) : []);
+  //     setArchivedTasks(archivedTaskString ? JSON.parse(archivedTaskString) : []);
+  //     setArchivedLists(archivedListString ? JSON.parse(archivedListString) : []);
+  //   } else {
+  //     setTasks([]);
+  //     setLists([]);
+  //     setArchivedTasks([]);
+  //     setArchivedLists([]);
+  //   }
+  // }, [user]);
+
+  // useEffect(() => {
+  //   if (user) {
+  //     localStorage.setItem(`tasks_${user.uid}`, JSON.stringify(tasks));
+  //   }
+  // }, [tasks, user]);
+
+  // useEffect(() => {
+  //   if (user) {
+  //     localStorage.setItem(`lists_${user.uid}`, JSON.stringify(lists));
+  //   }
+  // }, [lists, user]);
+
+  // useEffect(() => {
+  //   if (user) {
+  //     localStorage.setItem(`archivedTasks_${user.uid}`, JSON.stringify(archivedTasks));
+  //   }
+  // }, [archivedTasks, user]);
+
+  // useEffect(() => {
+  //   if (user) {
+  //     localStorage.setItem(`archivedLists_${user.uid}`, JSON.stringify(archivedLists));
+  //   }
+  // }, [archivedLists, user]);
+
+
+  // Firestore Listeners
+  useEffect(() => {
+    if (!user) {
       setTasks([]);
       setLists([]);
-      setArchivedTasks([]);
-      setArchivedLists([]);
+      setLoading(false);
+      return;
     }
-  }, [user]);
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(`tasks_${user.uid}`, JSON.stringify(tasks));
-    }
-  }, [tasks, user]);
+    setLoading(true);
+    setError(null);
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(`lists_${user.uid}`, JSON.stringify(lists));
-    }
-  }, [lists, user]);
+    const tasksCollectionRef = collection(db, 'tasks');
+    const listsCollectionRef = collection(db, 'lists');
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(`archivedTasks_${user.uid}`, JSON.stringify(archivedTasks));
-    }
-  }, [archivedTasks, user]);
+    // Query for tasks assigned to the current user
+    const qTasks = query(tasksCollectionRef, where('assignedTo', '==', user.uid));
+    const unsubscribeTasks = onSnapshot(qTasks, (snapshot) => {
+      const fetchedTasks = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setTasks(fetchedTasks);
+      setLoading(false);
+    }, (err) => {
+      console.error("Error fetching tasks:", err);
+      setError("Failed to load tasks. Please try again.");
+      setLoading(false);
+    });
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(`archivedLists_${user.uid}`, JSON.stringify(archivedLists));
-    }
-  }, [archivedLists, user]);
+    // Query for lists assigned to the current user
+    const qLists = query(listsCollectionRef, where('assignedTo', '==', user.uid));
+    const unsubscribeLists = onSnapshot(qLists, (snapshot) => {
+      const fetchedLists = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setLists(fetchedLists);
+      setLoading(false); // Can be set here or after both are loaded
+    }, (err) => {
+      console.error("Error fetching lists:", err);
+      setError("Failed to load lists. Please try again.");
+      setLoading(false);
+    });
+
+    return () => {
+      unsubscribeTasks();
+      unsubscribeLists();
+    };
+  }, [user]); // Re-run when user changes
+
 
   const triggerConfetti = () => {
     setShowConfetti(true);
@@ -299,36 +371,69 @@ const Checklist = ({ user }) => {
     }, 4000);
   };
 
-  const completeTask = (id) => {
-    setTasks(prevTasks => prevTasks.map(task => {
-      if (task.id === id) {
-        const updatedTask = { ...task, completed: !task.completed };
-        if (updatedTask.completed) {
+  // Firestore operations
+  const completeTask = async (id) => {
+    try {
+      const taskRef = doc(db, 'tasks', id);
+      const taskToUpdate = tasks.find(t => t.id === id);
+
+      if (taskToUpdate) {
+        const newCompletedStatus = !taskToUpdate.completed;
+        const updates = {
+          completed: newCompletedStatus,
+          lastModifiedAt: serverTimestamp(),
+          archived: newCompletedStatus ? true : false, // Archive if completed
+          archivedAt: newCompletedStatus ? new Date().toISOString() : null,
+          archivedReason: newCompletedStatus ? 'completed' : null
+        };
+        await updateDoc(taskRef, updates);
+        if (newCompletedStatus) {
           triggerConfetti();
-          setArchivedTasks(prevArchived => [...prevArchived, { ...updatedTask, archived: true, archivedAt: new Date().toISOString(), type: 'task', archivedReason: 'completed' }]);
-          return null;
         }
-        return updatedTask;
       }
-      return task;
-    }).filter(task => task !== null));
+    } catch (err) {
+      console.error("Error completing task:", err);
+      setError("Failed to update task status.");
+    }
   };
 
-  const archiveTask = (id) => {
-    setTasks(prevTasks => prevTasks.map(task => {
-      if (task.id === id) {
-        setArchivedTasks(prevArchived => [...prevArchived, { ...task, archived: true, archivedAt: new Date().toISOString(), type: 'task', archivedReason: 'deleted' }]);
-        return null;
-      }
-      return task;
-    }).filter(task => task !== null));
+  const archiveTask = async (id) => {
+    try {
+      const taskRef = doc(db, 'tasks', id);
+      await updateDoc(taskRef, {
+        archived: true,
+        archivedAt: new Date().toISOString(),
+        archivedReason: 'deleted',
+        lastModifiedAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error("Error archiving task:", err);
+      setError("Failed to archive task.");
+    }
   };
 
-  const restoreTask = (id) => {
-    setArchivedTasks(prevArchived => prevArchived.filter(task => task.id !== id));
-    const taskToRestore = archivedTasks.find(task => task.id === id);
-    if (taskToRestore) {
-      setTasks(prevTasks => [...prevTasks, { ...taskToRestore, archived: false, completed: false }]);
+  const restoreTask = async (id) => {
+    try {
+      const taskRef = doc(db, 'tasks', id);
+      await updateDoc(taskRef, {
+        archived: false,
+        completed: false, // Restore as incomplete
+        archivedAt: null,
+        archivedReason: null,
+        lastModifiedAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error("Error restoring task:", err);
+      setError("Failed to restore task.");
+    }
+  };
+
+  const handleDeleteTask = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'tasks', id));
+    } catch (err) {
+      console.error("Error deleting task:", err);
+      setError("Failed to delete task.");
     }
   };
 
@@ -350,146 +455,246 @@ const Checklist = ({ user }) => {
     setCurrentNoteText('');
   };
 
-  const handleSaveNote = () => {
-    if (editingNoteListId) {
-      setLists(lists.map(list =>
-        list.id === editingNoteListId
-          ? {
-            ...list,
-            tasks: list.tasks.map(task =>
-              task.id === editingNoteTaskId ? { ...task, note: currentNoteText } : task
-            )
-          }
-          : list
-      ));
-      setArchivedLists(prevArchivedLists => prevArchivedLists.map(list =>
-        list.id === editingNoteListId
-          ? {
-            ...list,
-            tasks: list.tasks.map(task =>
-              task.id === editingNoteTaskId ? { ...task, note: currentNoteText } : task
-            )
-          }
-          : list
-      ));
-    } else {
-      setTasks(tasks.map(task =>
-        task.id === editingNoteTaskId ? { ...task, note: currentNoteText } : task
-      ));
-      setArchivedTasks(prevArchivedTasks => prevArchivedTasks.map(task =>
-        task.id === editingNoteTaskId ? { ...task, note: currentNoteText } : task
-      ));
-    }
-    handleCloseNotes();
-  };
-
-  const completeList = (id) => {
-    setLists(prevLists => prevLists.map(list => {
-      if (list.id === id) {
-        const updatedList = { ...list, completed: !list.completed };
-        if (updatedList.completed) {
-          triggerConfetti();
-          updatedList.tasks = updatedList.tasks.map(task => ({ ...task, completed: true, archived: true }));
-          setArchivedLists(prevArchived => [...prevArchived, { ...updatedList, archived: true, archivedAt: new Date().toISOString(), type: 'list', archivedReason: 'completed' }]);
-          return null;
+  const handleSaveNote = async () => {
+    try {
+      if (editingNoteListId) {
+        // Find the list and the specific task within it to update
+        const listToUpdate = lists.find(list => list.id === editingNoteListId);
+        if (listToUpdate) {
+          const updatedTasks = listToUpdate.tasks.map(task =>
+            task.id === editingNoteTaskId ? { ...task, note: currentNoteText } : task
+          );
+          const listRef = doc(db, 'lists', editingNoteListId);
+          await updateDoc(listRef, {
+            tasks: updatedTasks, // Update the entire tasks array in the list document
+            lastModifiedAt: serverTimestamp()
+          });
         }
-        return updatedList;
+      } else if (editingNoteTaskId) {
+        const taskRef = doc(db, 'tasks', editingNoteTaskId);
+        await updateDoc(taskRef, {
+          note: currentNoteText,
+          lastModifiedAt: serverTimestamp()
+        });
       }
-      return list;
-    }).filter(list => list !== null));
-  };
-
-  const archiveList = (id) => {
-    setLists(prevLists => prevLists.map(list => {
-      if (list.id === id) {
-        setArchivedLists(prevArchived => [...prevArchived, { ...list, archived: true, archivedAt: new Date().toISOString(), type: 'list', archivedReason: 'deleted' }]);
-        return null;
-      }
-      return list;
-    }).filter(list => list !== null));
-  };
-
-  const restoreList = (id) => {
-    setArchivedLists(prevArchived => prevArchived.filter(list => list.id !== id));
-    const listToRestore = archivedLists.find(list => list.id === id);
-    if (listToRestore) {
-      setLists(prevLists => [...prevLists, { ...listToRestore, archived: false, completed: false, tasks: listToRestore.tasks.map(task => ({...task, archived: false, completed: false})) }]);
+      handleCloseNotes();
+    } catch (err) {
+      console.error("Error saving note:", err);
+      setError("Failed to save note.");
     }
   };
 
-  const completeTaskInList = (listId, taskId) => {
-    setLists(prevLists => prevLists.map(list => {
-      if (list.id === listId) {
-        const updatedTasks = list.tasks.map(task => {
+  const completeList = async (id) => {
+    try {
+      const listRef = doc(db, 'lists', id);
+      const listToUpdate = lists.find(l => l.id === id);
+
+      if (listToUpdate) {
+        const newCompletedStatus = !listToUpdate.completed;
+        const updates = {
+          completed: newCompletedStatus,
+          lastModifiedAt: serverTimestamp(),
+          archived: newCompletedStatus ? true : false, // Archive list if completed
+          archivedAt: newCompletedStatus ? new Date().toISOString() : null,
+          archivedReason: newCompletedStatus ? 'completed' : null
+        };
+
+        // If completing the list, also mark all its tasks as completed and archived
+        if (newCompletedStatus && listToUpdate.tasks) {
+          updates.tasks = listToUpdate.tasks.map(task => ({
+            ...task,
+            completed: true,
+            archived: true // Also archive tasks within a completed list
+          }));
+          triggerConfetti();
+        } else if (!newCompletedStatus && listToUpdate.tasks) {
+           // If un-completing list, un-complete and un-archive its tasks
+           updates.tasks = listToUpdate.tasks.map(task => ({
+            ...task,
+            completed: false,
+            archived: false
+          }));
+        }
+
+        await updateDoc(listRef, updates);
+      }
+    } catch (err) {
+      console.error("Error completing list:", err);
+      setError("Failed to update list status.");
+    }
+  };
+
+  const archiveList = async (id) => {
+    try {
+      const listRef = doc(db, 'lists', id);
+      await updateDoc(listRef, {
+        archived: true,
+        archivedAt: new Date().toISOString(),
+        archivedReason: 'deleted',
+        lastModifiedAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error("Error archiving list:", err);
+      setError("Failed to archive list.");
+    }
+  };
+
+  const restoreList = async (id) => {
+    try {
+      const listRef = doc(db, 'lists', id);
+      const listToUpdate = lists.find(l => l.id === id);
+
+      if (listToUpdate) {
+        const updates = {
+          archived: false,
+          completed: false, // Restore as incomplete
+          archivedAt: null,
+          archivedReason: null,
+          lastModifiedAt: serverTimestamp()
+        };
+
+        // Also restore tasks within the list
+        if (listToUpdate.tasks) {
+          updates.tasks = listToUpdate.tasks.map(task => ({
+            ...task,
+            archived: false,
+            completed: false
+          }));
+        }
+        await updateDoc(listRef, updates);
+      }
+    } catch (err) {
+      console.error("Error restoring list:", err);
+      setError("Failed to restore list.");
+    }
+  };
+
+  const handleDeleteList = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'lists', id));
+    } catch (err) {
+      console.error("Error deleting list:", err);
+      setError("Failed to delete list.");
+    }
+  };
+
+  const completeTaskInList = async (listId, taskId) => {
+    try {
+      const listRef = doc(db, 'lists', listId);
+      const listToUpdate = lists.find(l => l.id === listId);
+
+      if (listToUpdate) {
+        const updatedTasks = listToUpdate.tasks.map(task => {
           if (task.id === taskId) {
-            const updatedTask = { ...task, completed: !task.completed };
-            if (updatedTask.completed) {
+            const newCompletedStatus = !task.completed;
+            if (newCompletedStatus) {
               triggerConfetti();
             }
-            return updatedTask;
+            return { ...task, completed: newCompletedStatus, archived: newCompletedStatus ? true : false }; // Archive task if completed
           }
           return task;
         });
+
+        // Check if all tasks in the list are completed
         const allTasksCompleted = updatedTasks.every(task => task.completed);
-        return {
-          ...list,
+
+        await updateDoc(listRef, {
           tasks: updatedTasks,
-          completed: allTasksCompleted
-        };
+          completed: allTasksCompleted, // Update list completed status based on its tasks
+          lastModifiedAt: serverTimestamp()
+        });
       }
-      return list;
-    }));
+    } catch (err) {
+      console.error("Error completing task in list:", err);
+      setError("Failed to update task in list.");
+    }
   };
 
-  const archiveTaskInList = (listId, taskId) => {
-    setLists(prevLists => prevLists.map(list => {
-      if (list.id === listId) {
-        return {
-          ...list,
-          tasks: list.tasks.map(task => {
-            if (task.id === taskId) {
-              return { ...task, archived: true };
-            }
-            return task;
-          })
-        };
+  const archiveTaskInList = async (listId, taskId) => {
+    try {
+      const listRef = doc(db, 'lists', listId);
+      const listToUpdate = lists.find(l => l.id === listId);
+
+      if (listToUpdate) {
+        const updatedTasks = listToUpdate.tasks.map(task => {
+          if (task.id === taskId) {
+            return { ...task, archived: true };
+          }
+          return task;
+        });
+        await updateDoc(listRef, {
+          tasks: updatedTasks,
+          lastModifiedAt: serverTimestamp()
+        });
       }
-      return list;
-    }));
+    } catch (err) {
+      console.error("Error archiving task in list:", err);
+      setError("Failed to archive task in list.");
+    }
   };
 
-  const restoreTaskInList = (listId, taskId) => {
-    setLists(prevLists => prevLists.map(list => {
-        if (list.id === listId) {
-            const updatedTasks = list.tasks.map(task => {
-                if (task.id === taskId) {
-                    return { ...task, archived: false, completed: false };
-                }
-                return task;
-            });
-            return { ...list, tasks: updatedTasks };
-        }
-        return list;
-    }));
+  const restoreTaskInList = async (listId, taskId) => {
+    try {
+      const listRef = doc(db, 'lists', listId);
+      const listToUpdate = lists.find(l => l.id === listId);
+
+      if (listToUpdate) {
+        const updatedTasks = listToUpdate.tasks.map(task => {
+          if (task.id === taskId) {
+            return { ...task, archived: false, completed: false };
+          }
+          return task;
+        });
+        await updateDoc(listRef, {
+          tasks: updatedTasks,
+          lastModifiedAt: serverTimestamp()
+        });
+      }
+    } catch (err) {
+      console.error("Error restoring task in list:", err);
+      setError("Failed to restore task in list.");
+    }
   };
 
-  const allTasks = [...tasks, ...archivedTasks];
-  const allLists = [...lists, ...archivedLists];
+  const handleDeleteTaskInList = async (listId, taskId) => {
+    try {
+      const listRef = doc(db, 'lists', listId);
+      const listToUpdate = lists.find(l => l.id === listId);
 
-  const filteredTasks = allTasks.filter(task =>
-    (showArchived ? task.archived : !task.archived) &&
-    (task.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      if (listToUpdate) {
+        const updatedTasks = listToUpdate.tasks.filter(task => task.id !== taskId);
+        await updateDoc(listRef, {
+          tasks: updatedTasks,
+          lastModifiedAt: serverTimestamp()
+        });
+      }
+    } catch (err) {
+      console.error("Error deleting task in list:", err);
+      setError("Failed to delete task in list.");
+    }
+  };
+
+  // Derive archivedTasks and archivedLists from the main tasks and lists states
+  const activeTasks = tasks.filter(task => !task.archived);
+  const archivedTasksState = tasks.filter(task => task.archived); // Renamed to avoid clash with function
+  const activeLists = lists.filter(list => !list.archived);
+  const archivedListsState = lists.filter(list => list.archived); // Renamed to avoid clash with function
+
+
+  // Adjusted filtering to use active/archived states derived from Firestore data
+  const filteredTasks = (showArchived ? archivedTasksState : activeTasks).filter(task =>
+    (task.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (task.note && task.note.toLowerCase().includes(searchQuery.toLowerCase())))
   );
 
-  const filteredLists = allLists.filter(list =>
-    (showArchived ? list.archived : !list.archived) &&
-    (list.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      list.tasks.some(task =>
-        task.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredLists = (showArchived ? archivedListsState : activeLists).filter(list =>
+    (list.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (list.tasks && list.tasks.some(task =>
+        task.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (task.note && task.note.toLowerCase().includes(searchQuery.toLowerCase()))
-      ))
+      )))
   );
+
 
   const totalMainTasks = filteredTasks.length;
   const completedMainTasks = filteredTasks.filter(t => t.completed).length;
@@ -497,20 +702,17 @@ const Checklist = ({ user }) => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      // Clear all local storage data for the user on logout
-      localStorage.removeItem(`tasks_${user.uid}`);
-      localStorage.removeItem(`lists_${user.uid}`);
-      localStorage.removeItem(`archivedTasks_${user.uid}`);
-      localStorage.removeItem(`archivedLists_${user.uid}`);
-      console.log("User logged out and local data cleared.");
-      // App.jsx's onAuthStateChanged listener will handle redirect
-      setShowAccountModal(false); // Close the modal on logout
+      // No need to clear local storage items related to tasks/lists/archives anymore as data is in Firestore
+      console.log("User logged out.");
+      setShowAccountModal(false);
     } catch (error) {
       console.error("Error logging out:", error.message);
     }
   };
 
-  const allArchivedItems = [...archivedTasks, ...archivedLists];
+  // Pass archived tasks and lists to ArchiveModal for display
+  const allArchivedItems = [...archivedTasksState.map(t => ({...t, type: 'task'})), ...archivedListsState.map(l => ({...l, type: 'list'}))];
+
 
   return (
     <div className="checklist-content" ref={checklistRef}>
@@ -518,13 +720,12 @@ const Checklist = ({ user }) => {
         <h1 className="app-title">Secure Checklist</h1>
         {user && (
           <div className="user-account-section">
-            {/* Account Icon Button - Now using an emoji */}
             <button
               onClick={() => setShowAccountModal(true)}
               className="account-button"
               title="My Account"
             >
-              <span style={{ fontSize: '2em', lineHeight: '1em' }}>👤</span> {/* Emoji for user */}
+              <span style={{ fontSize: '2em', lineHeight: '1em' }}>👤</span>
             </button>
           </div>
         )}
@@ -547,73 +748,82 @@ const Checklist = ({ user }) => {
         </button>
       </div>
 
-      <div className="content-area">
-        {(filteredTasks.length > 0 || !showArchived) && (
-          <div className="tasks-section">
-            <h2 className="section-title">
-              <CheckSquare size={20} />
-              {showArchived ? "Archived Tasks" : "Active Tasks"} ({completedMainTasks}/{totalMainTasks})
-            </h2>
-            <div className="tasks-container">
-              {filteredTasks.map(task => (
-                <Task
-                  key={task.id}
-                  task={task}
-                  onComplete={completeTask}
-                  onOpenNotes={handleOpenNotes}
-                  onArchive={archiveTask}
-                  onRestore={restoreTask}
-                />
-              ))}
-            </div>
-            {totalMainTasks > 0 && (
-              <ProgressBar completedTask={completedMainTasks} total={totalMainTasks} onCompleteList={false} />
-            )}
-            {filteredTasks.length === 0 && searchQuery === '' && !showArchived && (
-                <p className="empty-state">No active tasks yet. Add one above!</p>
-            )}
-             {filteredTasks.length === 0 && searchQuery === '' && showArchived && (
-                <p className="empty-state">No archived tasks.</p>
-            )}
-          </div>
-        )}
+      {loading && <p className="loading-message">Loading tasks and lists...</p>}
+      {error && <p className="error-message">{error}</p>}
 
-        {(filteredLists.length > 0 || !showArchived) && (
-          <div className="lists-section">
-            <h2 className="section-title">
-              <List size={20} />
-              {showArchived ? "Archived Lists" : "Active Lists"} ({filteredLists.filter(l => l.completed).length}/{filteredLists.length})
-            </h2>
-            <div className="lists-container">
-              {filteredLists.map(list => (
-                <TodoList
-                  key={list.id}
-                  list={list}
-                  onComplete={completeList}
-                  onCompleteTask={completeTaskInList}
-                  onOpenNotes={handleOpenNotesForListTask}
-                  onArchive={archiveList}
-                  onRestore={restoreList}
-                  onArchiveTaskInList={archiveTaskInList}
-                  onRestoreTaskInList={restoreTaskInList}
-                />
-              ))}
+      {!loading && !error && (
+        <div className="content-area">
+          {(filteredTasks.length > 0 || !showArchived) && ( // Show section if there are tasks or if not showing archived (to show empty state)
+            <div className="tasks-section">
+              <h2 className="section-title">
+                <CheckSquare size={20} />
+                {showArchived ? "Archived Tasks" : "Active Tasks"} ({completedMainTasks}/{totalMainTasks})
+              </h2>
+              <div className="tasks-container">
+                {filteredTasks.map(task => (
+                  <Task
+                    key={task.id}
+                    task={task}
+                    onComplete={completeTask}
+                    onOpenNotes={handleOpenNotes}
+                    onArchive={archiveTask}
+                    onRestore={restoreTask}
+                    onDelete={handleDeleteTask} // Pass delete handler
+                  />
+                ))}
+              </div>
+              {totalMainTasks > 0 && (
+                <ProgressBar completedTask={completedMainTasks} total={totalMainTasks} onCompleteList={false} />
+              )}
+              {filteredTasks.length === 0 && searchQuery === '' && !showArchived && (
+                  <p className="empty-state">No active tasks yet. Add one above!</p>
+              )}
+                {filteredTasks.length === 0 && searchQuery === '' && showArchived && (
+                  <p className="empty-state">No archived tasks.</p>
+              )}
             </div>
-             {filteredLists.length === 0 && searchQuery === '' && !showArchived && (
-                <p className="empty-state">No active lists yet. Add one above!</p>
-            )}
-            {filteredLists.length === 0 && searchQuery === '' && showArchived && (
-                <p className="empty-state">No archived lists.</p>
-            )}
-          </div>
-        )}
+          )}
 
-        {searchQuery !== '' && filteredTasks.length === 0 && filteredLists.length === 0 && (
-          <div className="empty-state">
-            <p>No matching tasks or lists found for "{searchQuery}".</p>
-          </div>
-        )}
-      </div>
+          {(filteredLists.length > 0 || !showArchived) && ( // Show section if there are lists or if not showing archived (to show empty state)
+            <div className="lists-section">
+              <h2 className="section-title">
+                <List size={20} />
+                {showArchived ? "Archived Lists" : "Active Lists"} ({filteredLists.filter(l => l.completed).length}/{filteredLists.length})
+              </h2>
+              <div className="lists-container">
+                {filteredLists.map(list => (
+                  <TodoList
+                    key={list.id}
+                    list={list}
+                    onComplete={completeList}
+                    onCompleteTask={completeTaskInList}
+                    onOpenNotes={handleOpenNotesForListTask}
+                    onArchive={archiveList}
+                    onRestore={restoreList}
+                    onDeleteList={handleDeleteList} // Pass delete list handler
+                    onArchiveTaskInList={archiveTaskInList}
+                    onRestoreTaskInList={restoreTaskInList}
+                    onDeleteTaskInList={handleDeleteTaskInList} // Pass delete task in list handler
+                  />
+                ))}
+              </div>
+                {filteredLists.length === 0 && searchQuery === '' && !showArchived && (
+                  <p className="empty-state">No active lists yet. Add one above!</p>
+              )}
+              {filteredLists.length === 0 && searchQuery === '' && showArchived && (
+                  <p className="empty-state">No archived lists.</p>
+              )}
+            </div>
+          )}
+
+          {searchQuery !== '' && filteredTasks.length === 0 && filteredLists.length === 0 && (
+            <div className="empty-state">
+              <p>No matching tasks or lists found for "{searchQuery}".</p>
+            </div>
+          )}
+        </div>
+      )}
+
 
       {(editingNoteTaskId !== null) && (
         <Notes
@@ -633,7 +843,7 @@ const Checklist = ({ user }) => {
         <AccountModal
           user={user}
           onClose={() => setShowAccountModal(false)}
-          onSignOut={handleLogout} // Pass the existing logout handler
+          onSignOut={handleLogout}
         />
       )}
 
