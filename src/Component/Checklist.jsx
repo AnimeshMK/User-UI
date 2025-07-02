@@ -94,6 +94,8 @@ const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore, onDelete })
           <button
             onClick={() => onComplete(task.id)}
             className={`checkbox ${task.completed ? 'checked' : ''}`}
+            disabled={task.archived}
+            title={task.archived ? "Archived task cannot be updated" : "Mark as completed"}
           >
             {task.completed && <Check size={12} />}
           </button>
@@ -108,23 +110,25 @@ const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore, onDelete })
           )}
           {task.deadline && (
             <div className="task-time-detail">
-              Deadline: {new Date(task.deadline).toLocaleString()}
+              Deadline: {new Date(task.deadline.toDate()).toLocaleString()}
             </div>
           )}
         </div>
       </div>
 
       <div className="task-actions">
-        <button onClick={() => onOpenNotes(task.id, task.note)} className="note-btn">
+        <button
+          onClick={() => onOpenNotes(task.id, task.note)}
+          className="note-btn"
+          disabled={task.archived}
+          title={task.archived ? "Archived task cannot be edited" : "Open notes"}
+        >
           <StickyNote size={16} />
         </button>
         {task.archived ? (
           <>
             <button onClick={() => onRestore(task.id)} className="archive-btn">
               <RotateCcw size={16} />
-            </button>
-            <button onClick={() => onDelete(task.id, task.type)} className="delete-btn">
-              <Trash2 size={16} />
             </button>
           </>
         ) : (
@@ -185,9 +189,6 @@ const TodoList = ({
             <>
               <button onClick={() => onRestore(list.id)} className="archive-btn">
                 <RotateCcw size={16} />
-              </button>
-              <button onClick={() => onDeleteList(list.id)} className="delete-btn">
-                <Trash2 size={16} />
               </button>
             </>
           ) : (
@@ -313,46 +314,57 @@ const Checklist = ({ user }) => {
 
   //Firestore Listeners
   useEffect(() => {
-  if (!user) {
-    setTasks([]);
-    setLists([]);
-    setLoading(false);
-    return;
-  }
-
-  setLoading(true);
-  setError(null);
-
-  const userDocRef = collection(db, 'users');
-  const q = query(userDocRef, where('id', '==', user.uid)); // Match your 'id' field in Firestore user doc
-
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    if (!snapshot.empty) {
-      const docData = snapshot.docs[0].data();
-
-      // Fetch nested arrays
-      const fetchedTasks = docData.tasks || [];
-      const fetchedLists = docData.lists ? [docData.lists] : [];
-
-      setTasks(fetchedTasks);
-      setLists(fetchedLists);
-      console.log("Fetched Tasks:", fetchedTasks);
-      console.log("Fetched Lists:", fetchedLists);
-    } else {
-      console.warn("No matching user document found.");
+    if (!user) {
       setTasks([]);
       setLists([]);
+      setLoading(false);
+      return;
     }
 
-    setLoading(false);
-  }, (err) => {
-    console.error("Error fetching user data:", err);
-    setError("Failed to load user data.");
-    setLoading(false);
-  });
+    setLoading(true);
+    setError(null);
 
-  return () => unsubscribe();
-}, [user]);
+    const userDocRef = collection(db, 'users');
+    const q = query(userDocRef, where('id', '==', user.uid)); // Match your 'id' field in Firestore user doc
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const docData = snapshot.docs[0].data();
+
+        // Fetch nested arrays
+        const fetchedTasks = docData.tasks || [];
+        const fetchedLists = Array.isArray(docData.lists) ? docData.lists : [];
+
+        // assumes task and tasks array as the same
+        const normalizedLists = fetchedLists.map(list => ({
+          ...list,
+          tasks: Array.isArray(list.tasks)
+            ? list.tasks
+            : Array.isArray(list.task)
+              ? list.task
+              : []
+        }));
+        setLists(normalizedLists); // setting tasks as tasks or task
+
+        setTasks(fetchedTasks);
+        // setLists(fetchedLists);
+        console.log("Fetched Tasks:", fetchedTasks);
+        console.log("Fetched Lists:", fetchedLists);
+      } else {
+        console.warn("No matching user document found.");
+        setTasks([]);
+        setLists([]);
+      }
+
+      setLoading(false);
+    }, (err) => {
+      console.error("Error fetching user data:", err);
+      setError("Failed to load user data.");
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
 
   // async function fetchUsersFromFirebase() {
@@ -428,31 +440,84 @@ const Checklist = ({ user }) => {
     }
   };
 
-  const archiveTask = async (id) => {
+  const archiveTask = async (taskId) => {
     try {
-      const taskRef = doc(db, 'tasks', id);
-      await updateDoc(taskRef, {
-        archived: true,
-        archivedAt: new Date().toISOString(),
-        archivedReason: 'deleted',
-        lastModifiedAt: serverTimestamp()
-      });
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userDocRef = doc(db, 'users', userDoc.id);
+        const currentTasks = userDoc.data().tasks || [];
+
+        const taskToArchive = currentTasks.find(task => task.id === taskId);
+
+        if (!taskToArchive) {
+          throw new Error("Task not found.");
+        }
+
+        if (!taskToArchive.completed) {
+          alert("Only completed tasks can be archived.");
+          return;
+        }
+
+        const updatedTasks = currentTasks.map(task =>
+          task.id === taskId
+            ? {
+              ...task,
+              archived: true,
+              archivedAt: new Date().toISOString(),
+              archivedReason: 'completed',
+            }
+            : task
+        );
+
+        await updateDoc(userDocRef, {
+          tasks: updatedTasks,
+          lastModifiedAt: serverTimestamp(),
+        });
+
+        console.log("Task archived successfully.");
+      } else {
+        throw new Error("User document not found.");
+      }
     } catch (err) {
       console.error("Error archiving task:", err);
       setError("Failed to archive task.");
     }
   };
 
-  const restoreTask = async (id) => {
+  const restoreTask = async (taskId) => {
     try {
-      const taskRef = doc(db, 'tasks', id);
-      await updateDoc(taskRef, {
-        archived: false,
-        completed: false, // Restore as incomplete
-        archivedAt: null,
-        archivedReason: null,
-        lastModifiedAt: serverTimestamp()
-      });
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const currentTasks = userDoc.data().tasks || [];
+
+        const updatedTasks = currentTasks.map(task =>
+          task.id === taskId
+            ? {
+              ...task,
+              archived: false,
+              archivedAt: null,
+              archivedReason: null,
+            }
+            : task
+        );
+
+        await updateDoc(doc(db, 'users', userDoc.id), {
+          tasks: updatedTasks,
+          lastModifiedAt: serverTimestamp(),
+        });
+
+        console.log("Task restored successfully.");
+      } else {
+        throw new Error("User document not found.");
+      }
     } catch (err) {
       console.error("Error restoring task:", err);
       setError("Failed to restore task.");
@@ -497,22 +562,23 @@ const Checklist = ({ user }) => {
         const userDocRef = doc(db, 'users', userDoc.id);
 
         if (editingNoteListId) { //Notes section for the List
-          const currentLists = userDoc.data().lists ? [userDoc.data().lists] : [];
+          const currentLists = userDoc.data().lists || [];
 
           const updatedLists = currentLists.map(list => {
-            if (list.id === editingNoteListId && list.tasks) {
-              const updatedTasks = list.tasks.map(task =>
-                task.id === editingNoteTaskId
-                  ? { ...task, note: currentNoteText }
-                  : task
-              );
-              return { ...list, tasks: updatedTasks };
-            }
-            return list;
+            if (list.id !== editingNoteListId) return list;
+
+            const updatedTasks = (Array.isArray(list.tasks) ? list.tasks : list.task || []).map(task =>
+              task.id === editingNoteTaskId ? { ...task, note: currentNoteText } : task
+            );
+
+            return {
+              ...list,
+              tasks: updatedTasks
+            };
           });
 
           await updateDoc(userDocRef, {
-            lists: updatedLists[0],
+            lists: updatedLists,
             lastModifiedAt: serverTimestamp()
           });
 
@@ -542,37 +608,43 @@ const Checklist = ({ user }) => {
 
   const completeList = async (id) => {
     try {
-      const listRef = doc(db, 'lists', id);
-      const listToUpdate = lists.find(l => l.id === id);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
 
-      if (listToUpdate) {
-        const newCompletedStatus = !listToUpdate.completed;
-        const updates = {
-          completed: newCompletedStatus,
-          lastModifiedAt: serverTimestamp(),
-          archived: newCompletedStatus ? true : false, // Archive list if completed
-          archivedAt: newCompletedStatus ? new Date().toISOString() : null,
-          archivedReason: newCompletedStatus ? 'completed' : null
-        };
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userDocRef = doc(db, 'users', userDoc.id);
+        const currentLists = userDoc.data().lists || [];
 
-        // If completing the list, also mark all its tasks as completed and archived
-        if (newCompletedStatus && listToUpdate.tasks) {
-          updates.tasks = listToUpdate.tasks.map(task => ({
+        const updatedLists = currentLists.map(list => {
+          if (list.id !== id) return list;
+
+          const newCompletedStatus = !list.completed;
+          const updatedTasks = (Array.isArray(list.tasks) ? list.tasks : list.task || []).map(task => ({
             ...task,
-            completed: true,
-            archived: true // Also archive tasks within a completed list
+            completed: newCompletedStatus,
+            archived: newCompletedStatus,
+            archivedAt: newCompletedStatus ? new Date().toISOString() : null,
+            archivedReason: newCompletedStatus ? 'completed' : null
           }));
-          triggerConfetti();
-        } else if (!newCompletedStatus && listToUpdate.tasks) {
-           // If un-completing list, un-complete and un-archive its tasks
-           updates.tasks = listToUpdate.tasks.map(task => ({
-            ...task,
-            completed: false,
-            archived: false
-          }));
-        }
 
-        await updateDoc(listRef, updates);
+          if (newCompletedStatus) triggerConfetti();
+
+          return {
+            ...list,
+            completed: newCompletedStatus,
+            archived: newCompletedStatus,
+            archivedAt: newCompletedStatus ? new Date().toISOString() : null,
+            archivedReason: newCompletedStatus ? 'completed' : null,
+            tasks: updatedTasks
+          };
+        });
+
+        await updateDoc(userDocRef, {
+          lists: updatedLists,
+          lastModifiedAt: serverTimestamp()
+        });
       }
     } catch (err) {
       console.error("Error completing list:", err);
@@ -582,13 +654,31 @@ const Checklist = ({ user }) => {
 
   const archiveList = async (id) => {
     try {
-      const listRef = doc(db, 'lists', id);
-      await updateDoc(listRef, {
-        archived: true,
-        archivedAt: new Date().toISOString(),
-        archivedReason: 'deleted',
-        lastModifiedAt: serverTimestamp()
-      });
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userDocRef = doc(db, 'users', userDoc.id);
+        const currentLists = userDoc.data().lists || [];
+
+        const updatedLists = currentLists.map(list => {
+          if (list.id !== id) return list;
+
+          return {
+            ...list,
+            archived: true,
+            archivedAt: new Date().toISOString(),
+            archivedReason: 'deleted'
+          };
+        });
+
+        await updateDoc(userDocRef, {
+          lists: updatedLists,
+          lastModifiedAt: serverTimestamp()
+        });
+      }
     } catch (err) {
       console.error("Error archiving list:", err);
       setError("Failed to archive list.");
@@ -597,27 +687,40 @@ const Checklist = ({ user }) => {
 
   const restoreList = async (id) => {
     try {
-      const listRef = doc(db, 'lists', id);
-      const listToUpdate = lists.find(l => l.id === id);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
 
-      if (listToUpdate) {
-        const updates = {
-          archived: false,
-          completed: false, // Restore as incomplete
-          archivedAt: null,
-          archivedReason: null,
-          lastModifiedAt: serverTimestamp()
-        };
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userDocRef = doc(db, 'users', userDoc.id);
+        const currentLists = userDoc.data().lists || [];
 
-        // Also restore tasks within the list
-        if (listToUpdate.tasks) {
-          updates.tasks = listToUpdate.tasks.map(task => ({
+        const updatedLists = currentLists.map(list => {
+          if (list.id !== id) return list;
+
+          const updatedTasks = (Array.isArray(list.tasks) ? list.tasks : list.task || []).map(task => ({
             ...task,
             archived: false,
-            completed: false
+            completed: false,
+            archivedAt: null,
+            archivedReason: null
           }));
-        }
-        await updateDoc(listRef, updates);
+
+          return {
+            ...list,
+            archived: false,
+            completed: false,
+            archivedAt: null,
+            archivedReason: null,
+            tasks: updatedTasks
+          };
+        });
+
+        await updateDoc(userDocRef, {
+          lists: updatedLists,
+          lastModifiedAt: serverTimestamp()
+        });
       }
     } catch (err) {
       console.error("Error restoring list:", err);
@@ -636,27 +739,40 @@ const Checklist = ({ user }) => {
 
   const completeTaskInList = async (listId, taskId) => {
     try {
-      const listRef = doc(db, 'lists', listId);
-      const listToUpdate = lists.find(l => l.id === listId);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
 
-      if (listToUpdate) {
-        const updatedTasks = listToUpdate.tasks.map(task => {
-          if (task.id === taskId) {
-            const newCompletedStatus = !task.completed;
-            if (newCompletedStatus) {
-              triggerConfetti();
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userDocRef = doc(db, 'users', userDoc.id);
+        const currentLists = userDoc.data().lists || [];
+
+        const updatedLists = currentLists.map(list => {
+          if (list.id !== listId) return list;
+
+          const updatedTasks = (Array.isArray(list.tasks) ? list.tasks : list.task || []).map(task => {
+            if (task.id === taskId) {
+              const newCompletedStatus = !task.completed;
+              if (newCompletedStatus) triggerConfetti();
+              return {
+                ...task,
+                completed: newCompletedStatus,
+                archived: newCompletedStatus
+              };
             }
-            return { ...task, completed: newCompletedStatus, archived: newCompletedStatus ? true : false }; // Archive task if completed
-          }
-          return task;
+            return task;
+          });
+
+          return {
+            ...list,
+            tasks: updatedTasks,
+            completed: updatedTasks.every(t => t.completed)
+          };
         });
 
-        // Check if all tasks in the list are completed
-        const allTasksCompleted = updatedTasks.every(task => task.completed);
-
-        await updateDoc(listRef, {
-          tasks: updatedTasks,
-          completed: allTasksCompleted, // Update list completed status based on its tasks
+        await updateDoc(userDocRef, {
+          lists: updatedLists,
           lastModifiedAt: serverTimestamp()
         });
       }
@@ -668,18 +784,42 @@ const Checklist = ({ user }) => {
 
   const archiveTaskInList = async (listId, taskId) => {
     try {
-      const listRef = doc(db, 'lists', listId);
-      const listToUpdate = lists.find(l => l.id === listId);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
 
-      if (listToUpdate) {
-        const updatedTasks = listToUpdate.tasks.map(task => {
-          if (task.id === taskId) {
-            return { ...task, archived: true };
-          }
-          return task;
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userDocRef = doc(db, 'users', userDoc.id);
+        const currentLists = userDoc.data().lists || [];
+
+        const updatedLists = currentLists.map(list => {
+          if (list.id !== listId) return list;
+
+          const updatedTasks = (Array.isArray(list.tasks) ? list.tasks : list.task || []).map(task => {
+            if (task.id === taskId) {
+              if (!task.completed) {
+                alert("Only completed tasks can be archived.");
+                return task;
+              }
+              return {
+                ...task,
+                archived: true,
+                archivedAt: new Date().toISOString(),
+                archivedReason: "completed"
+              };
+            }
+            return task;
+          });
+
+          return {
+            ...list,
+            tasks: updatedTasks
+          };
         });
-        await updateDoc(listRef, {
-          tasks: updatedTasks,
+
+        await updateDoc(userDocRef, {
+          lists: updatedLists,
           lastModifiedAt: serverTimestamp()
         });
       }
@@ -689,20 +829,41 @@ const Checklist = ({ user }) => {
     }
   };
 
+
   const restoreTaskInList = async (listId, taskId) => {
     try {
-      const listRef = doc(db, 'lists', listId);
-      const listToUpdate = lists.find(l => l.id === listId);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
 
-      if (listToUpdate) {
-        const updatedTasks = listToUpdate.tasks.map(task => {
-          if (task.id === taskId) {
-            return { ...task, archived: false, completed: false };
-          }
-          return task;
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userDocRef = doc(db, 'users', userDoc.id);
+        const currentLists = userDoc.data().lists || [];
+
+        const updatedLists = currentLists.map(list => {
+          if (list.id !== listId) return list;
+
+          const updatedTasks = (Array.isArray(list.tasks) ? list.tasks : list.task || []).map(task => {
+            if (task.id === taskId) {
+              return {
+                ...task,
+                archived: false,
+                archivedAt: null,
+                archivedReason: null
+              };
+            }
+            return task;
+          });
+
+          return {
+            ...list,
+            tasks: updatedTasks
+          };
         });
-        await updateDoc(listRef, {
-          tasks: updatedTasks,
+
+        await updateDoc(userDocRef, {
+          lists: updatedLists,
           lastModifiedAt: serverTimestamp()
         });
       }
@@ -711,6 +872,7 @@ const Checklist = ({ user }) => {
       setError("Failed to restore task in list.");
     }
   };
+
 
   const handleDeleteTaskInList = async (listId, taskId) => {
     try {
@@ -739,16 +901,16 @@ const Checklist = ({ user }) => {
 
   // Adjusted filtering to use active/archived states derived from Firestore data
   const filteredTasks = (showArchived ? archivedTasksState : activeTasks).filter(task =>
-    (task.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (task.note && task.note.toLowerCase().includes(searchQuery.toLowerCase())))
+  (task.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (task.note && task.note.toLowerCase().includes(searchQuery.toLowerCase())))
   );
 
   const filteredLists = (showArchived ? archivedListsState : activeLists).filter(list =>
-    (list.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (list.tasks && list.tasks.some(task =>
-        task.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (task.note && task.note.toLowerCase().includes(searchQuery.toLowerCase()))
-      )))
+  (list.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (list.tasks && list.tasks.some(task =>
+      task.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (task.note && task.note.toLowerCase().includes(searchQuery.toLowerCase()))
+    )))
   );
 
 
@@ -767,7 +929,7 @@ const Checklist = ({ user }) => {
   };
 
   // Pass archived tasks and lists to ArchiveModal for display
-  const allArchivedItems = [...archivedTasksState.map(t => ({...t, type: 'task'})), ...archivedListsState.map(l => ({...l, type: 'list'}))];
+  const allArchivedItems = [...archivedTasksState.map(t => ({ ...t, type: 'task' })), ...archivedListsState.map(l => ({ ...l, type: 'list' }))];
 
 
   return (
@@ -832,10 +994,10 @@ const Checklist = ({ user }) => {
                 <ProgressBar completedTask={completedMainTasks} total={totalMainTasks} onCompleteList={false} />
               )}
               {filteredTasks.length === 0 && searchQuery === '' && !showArchived && (
-                  <p className="empty-state">No active tasks yet. Add one above!</p>
+                <p className="empty-state">No active tasks yet. Add one above!</p>
               )}
-                {filteredTasks.length === 0 && searchQuery === '' && showArchived && (
-                  <p className="empty-state">No archived tasks.</p>
+              {filteredTasks.length === 0 && searchQuery === '' && showArchived && (
+                <p className="empty-state">No archived tasks.</p>
               )}
             </div>
           )}
@@ -863,11 +1025,11 @@ const Checklist = ({ user }) => {
                   />
                 ))}
               </div>
-                {filteredLists.length === 0 && searchQuery === '' && !showArchived && (
-                  <p className="empty-state">No active lists yet. Add one above!</p>
+              {filteredLists.length === 0 && searchQuery === '' && !showArchived && (
+                <p className="empty-state">No active lists yet. Add one above!</p>
               )}
               {filteredLists.length === 0 && searchQuery === '' && showArchived && (
-                  <p className="empty-state">No archived lists.</p>
+                <p className="empty-state">No archived lists.</p>
               )}
             </div>
           )}
@@ -929,7 +1091,7 @@ const Checklist = ({ user }) => {
             tweenDuration={4000}
             colors={['#a8dadc', '#61dafb', '#f2b5d4', '#e0e0e0', '#87ceeb']}
           />
-        </> 
+        </>
       )}
     </div>
   );
