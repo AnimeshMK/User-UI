@@ -311,42 +311,49 @@ const Checklist = ({ user }) => {
   // }, [archivedLists, user]);
 
 
-  // Firestore Listeners
+  //Firestore Listeners
   useEffect(() => {
-    console.log(user);
+  if (!user) {
+    setTasks([]);
+    setLists([]);
+    setLoading(false);
+    return;
+  }
 
-    if (!user) {
+  setLoading(true);
+  setError(null);
+
+  const userDocRef = collection(db, 'users');
+  const q = query(userDocRef, where('id', '==', user.uid)); // Match your 'id' field in Firestore user doc
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    if (!snapshot.empty) {
+      const docData = snapshot.docs[0].data();
+
+      // Fetch nested arrays
+      const fetchedTasks = docData.tasks || [];
+      const fetchedLists = docData.lists ? [docData.lists] : [];
+
+      setTasks(fetchedTasks);
+      setLists(fetchedLists);
+      console.log("Fetched Tasks:", fetchedTasks);
+      console.log("Fetched Lists:", fetchedLists);
+    } else {
+      console.warn("No matching user document found.");
       setTasks([]);
       setLists([]);
-      setLoading(false);
-      return;
     }
 
-    setLoading(true);
-    setError(null);
+    setLoading(false);
+  }, (err) => {
+    console.error("Error fetching user data:", err);
+    setError("Failed to load user data.");
+    setLoading(false);
+  });
 
-    const usersCollectionRef = collection(db, 'users');
-    
-    // Query for tasks assigned to the current user
-    const qTasks = query(usersCollectionRef, where('id', '==', user.uid));
-    const unsubscribeTasks = onSnapshot(qTasks, (snapshot) => {
-      const fetchedTasks = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      console.log(fetchedTasks);
-      setTasks(fetchedTasks);
-      setLoading(false);
-    }, (err) => {
-      console.error("Error fetching tasks:", err);
-      setError("Failed to load tasks. Please try again.");
-      setLoading(false);
-    });
+  return () => unsubscribe();
+}, [user]);
 
-    return () => {
-      unsubscribeTasks();
-    };
-  }, [user]); // Re-run when user changes
 
   // async function fetchUsersFromFirebase() {
   //   try {
@@ -397,28 +404,27 @@ const Checklist = ({ user }) => {
   };
 
   // Firestore operations
-  const completeTask = async (id) => {
+  const completeTask = async (taskId) => {
     try {
-      const taskRef = doc(db, 'tasks', id);
-      const taskToUpdate = tasks.find(t => t.id === id);
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
 
-      if (taskToUpdate) {
-        const newCompletedStatus = !taskToUpdate.completed;
-        const updates = {
-          completed: newCompletedStatus,
-          lastModifiedAt: serverTimestamp(),
-          archived: newCompletedStatus ? true : false, // Archive if completed
-          archivedAt: newCompletedStatus ? new Date().toISOString() : null,
-          archivedReason: newCompletedStatus ? 'completed' : null
-        };
-        await updateDoc(taskRef, updates);
-        if (newCompletedStatus) {
-          triggerConfetti();
-        }
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const tasks = userDoc.data().tasks || [];
+
+        const updatedTasks = tasks.map(task =>
+          task.id === taskId ? { ...task, completed: !task.completed } : task
+        );
+
+        const userDocRef = doc(db, 'users', userDoc.id);
+        await updateDoc(userDocRef, { tasks: updatedTasks });
+
+        console.log("Task completion status updated in Firestore.");
       }
-    } catch (err) {
-      console.error("Error completing task:", err);
-      setError("Failed to update task status.");
+    } catch (error) {
+      console.error("Error updating task:", error);
     }
   };
 
@@ -482,32 +488,57 @@ const Checklist = ({ user }) => {
 
   const handleSaveNote = async () => {
     try {
-      if (editingNoteListId) {
-        // Find the list and the specific task within it to update
-        const listToUpdate = lists.find(list => list.id === editingNoteListId);
-        if (listToUpdate) {
-          const updatedTasks = listToUpdate.tasks.map(task =>
-            task.id === editingNoteTaskId ? { ...task, note: currentNoteText } : task
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('id', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userDocRef = doc(db, 'users', userDoc.id);
+
+        if (editingNoteListId) { //Notes section for the List
+          const currentLists = userDoc.data().lists ? [userDoc.data().lists] : [];
+
+          const updatedLists = currentLists.map(list => {
+            if (list.id === editingNoteListId && list.tasks) {
+              const updatedTasks = list.tasks.map(task =>
+                task.id === editingNoteTaskId
+                  ? { ...task, note: currentNoteText }
+                  : task
+              );
+              return { ...list, tasks: updatedTasks };
+            }
+            return list;
+          });
+
+          await updateDoc(userDocRef, {
+            lists: updatedLists[0],
+            lastModifiedAt: serverTimestamp()
+          });
+
+        } else if (editingNoteTaskId) { // Notes section for the Tasks
+          const currentTasks = userDoc.data().tasks || [];
+
+          const updatedTasks = currentTasks.map(task =>
+            task.id === editingNoteTaskId
+              ? { ...task, note: currentNoteText }
+              : task
           );
-          const listRef = doc(db, 'lists', editingNoteListId);
-          await updateDoc(listRef, {
-            tasks: updatedTasks, // Update the entire tasks array in the list document
+
+          await updateDoc(userDocRef, {
+            tasks: updatedTasks,
             lastModifiedAt: serverTimestamp()
           });
         }
-      } else if (editingNoteTaskId) {
-        const taskRef = doc(db, 'tasks', editingNoteTaskId);
-        await updateDoc(taskRef, {
-          note: currentNoteText,
-          lastModifiedAt: serverTimestamp()
-        });
+
+        handleCloseNotes();
       }
-      handleCloseNotes();
     } catch (err) {
       console.error("Error saving note:", err);
       setError("Failed to save note.");
     }
   };
+
 
   const completeList = async (id) => {
     try {
@@ -898,7 +929,7 @@ const Checklist = ({ user }) => {
             tweenDuration={4000}
             colors={['#a8dadc', '#61dafb', '#f2b5d4', '#e0e0e0', '#87ceeb']}
           />
-        </>
+        </> 
       )}
     </div>
   );
