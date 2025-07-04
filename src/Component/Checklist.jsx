@@ -110,7 +110,7 @@ const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore, onDelete })
           )}
           {task.deadline && (
             <div className="task-time-detail">
-              Deadline: {new Date(task.deadline.toDate()).toLocaleString()}
+              {/* Deadline: {new Date(task.deadline.toDate()).toLocaleString()} */}
             </div>
           )}
         </div>
