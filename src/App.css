@@ -1454,3 +1454,14 @@ body {
         max-width: 100%; /* Take full width when stacked */
     }
 }
+
+.priority {
+    width: 75px;
+    padding: 7px;
+    border: 1px solid #404040;
+    border-radius: 7px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-right: 20px;
+}

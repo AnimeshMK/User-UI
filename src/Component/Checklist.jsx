@@ -1,10 +1,10 @@
 // src/Component/Checklist.jsx (UPDATED CONTENT)
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, CheckSquare, List, Check, StickyNote, Archive, LogOut, RotateCcw, Trash2 } from 'lucide-react'; // Added RotateCcw and Trash2 import
+import { Search, CheckSquare, List, Check, StickyNote, Archive, LogOut, RotateCcw, Trash2, Flag} from 'lucide-react'; // Added RotateCcw and Trash2 import
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig'; // Import db
-import { collection, addDoc, updateDoc, deleteDoc, query, where, onSnapshot, doc, serverTimestamp, arrayUnion, arrayRemove, getDocs } from 'firebase/firestore'; // Import Firestore functions
+import { collection, addDoc, updateDoc, deleteDoc, query, where, onSnapshot, doc, serverTimestamp, arrayUnion, arrayRemove, getDocs, setDoc } from 'firebase/firestore'; // Import Firestore functions
 
 import Confetti from 'react-confetti';
 import ArchiveModal from './ArchiveModal';
@@ -117,6 +117,16 @@ const Task = ({ task, onComplete, onOpenNotes, onArchive, onRestore, onDelete })
       </div>
 
       <div className="task-actions">
+        <div className='priority'>
+            {(task.priority === "low") ? (
+              <Flag size={16} color="#44ff44" />
+            ): (task.priority === "mid") ? (
+              <Flag size={16} color="#ffaa44" />
+            ):(
+              <Flag size={16} color="#ff4444" />
+            )}
+            <span>{task.priority}</span>
+        </div>
         <button
           onClick={() => onOpenNotes(task.id, task.note)}
           className="note-btn"
@@ -742,35 +752,64 @@ const Checklist = ({ user }) => {
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('id', '==', user.uid));
       const querySnapshot = await getDocs(q);
-
+  
       if (!querySnapshot.empty) {
         const userDoc = querySnapshot.docs[0];
         const userDocRef = doc(db, 'users', userDoc.id);
         const currentLists = userDoc.data().lists || [];
-
+  
         const updatedLists = currentLists.map(list => {
           if (list.id !== listId) return list;
-
-          const updatedTasks = (Array.isArray(list.tasks) ? list.tasks : list.task || []).map(task => {
+  
+          // Determine which property contains the tasks
+          const tasksArray = list.tasks || list.task || [];
+          
+          // Ensure we have an array
+          if (!Array.isArray(tasksArray)) {
+            console.warn(`Tasks property is not an array for list ${listId}`);
+            return list;
+          }
+  
+          let taskFound = false;
+          const updatedTasks = tasksArray.map(task => {
             if (task.id === taskId) {
+              taskFound = true;
               const newCompletedStatus = !task.completed;
               if (newCompletedStatus) triggerConfetti();
               return {
                 ...task,
                 completed: newCompletedStatus,
-                archived: newCompletedStatus
+                archived: newCompletedStatus,
+                deadline: new Date(task.deadline.toDate()).toLocaleString(),
               };
             }
             return task;
           });
-
-          return {
+  
+          // Log warning if task wasn't found
+          if (!taskFound) {
+            console.warn(`Task ${taskId} not found in list ${listId}`);
+          }
+  
+          // IMPORTANT: Preserve the original property name instead of forcing 'tasks'
+          const updatedList = {
             ...list,
-            tasks: updatedTasks,
             completed: updatedTasks.every(t => t.completed)
           };
+  
+          // Use the same property name that was originally used
+          if (list.tasks) {
+            updatedList.tasks = updatedTasks;
+          } else if (list.task) {
+            updatedList.task = updatedTasks;
+          } else {
+            // Default to 'tasks' if neither exists
+            updatedList.tasks = updatedTasks;
+          }
+  
+          return updatedList;
         });
-
+  
         await updateDoc(userDocRef, {
           lists: updatedLists,
           lastModifiedAt: serverTimestamp()
